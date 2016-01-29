@@ -857,7 +857,7 @@ template simulationFile(SimCode simCode, String guid, Boolean isModelExchangeFMU
     #include <simulation/solver/perform_simulation.c>
 
     #define prefixedName_performQSSSimulation <%symbolName(modelNamePrefixStr,"performQSSSimulation")%>
-    #include <simulation/solver/perform_qss_simulation.c>
+    #include <simulation/solver/qss.c>
     >>
     %>
 
