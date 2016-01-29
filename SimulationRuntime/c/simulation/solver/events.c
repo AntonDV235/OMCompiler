@@ -69,14 +69,17 @@ int checkForStateEvent(DATA* data, LIST *eventList);
  */
 void checkForSampleEvent(DATA *data, SOLVER_INFO* solverInfo)
 {
+  //printf("Check for sample event\n\n");
   TRACE_PUSH
   double nextTimeStep = solverInfo->currentTime + solverInfo->currentStepSize;
 
   if ((data->simulationInfo->nextSampleEvent <= nextTimeStep + SAMPLE_EPS) && (data->simulationInfo->nextSampleEvent >= solverInfo->currentTime))
   {
+    printf("We have found a sample event\n\n");
     solverInfo->currentStepSize = data->simulationInfo->nextSampleEvent - solverInfo->currentTime;
     data->simulationInfo->sampleActivated = 1;
     infoStreamPrint(LOG_EVENTS_V, 0, "Adjust step-size to %.15g at time %.15g to get next sample event at %.15g", solverInfo->currentStepSize, solverInfo->currentTime, data->simulationInfo->nextSampleEvent );
+    printf("Adjust step-size to %.15g at time %.15g to get next sample event at %.15g", solverInfo->currentStepSize, solverInfo->currentTime, data->simulationInfo->nextSampleEvent );
   }
 
   TRACE_POP
@@ -95,8 +98,7 @@ int checkForStateEvent(DATA* data, LIST *eventList)
 {
   TRACE_PUSH
   long i=0;
-
-  debugStreamPrint(LOG_EVENTS, 1, "check state-event zerocrossing at time %g",  data->localData[0]->timeValue);
+  debugStreamPrint(LOG_EVENTS, 1, "check state-event zerocrossing at time %g\n",  data->localData[0]->timeValue);
 
   for(i=0; i<data->modelData->nZeroCrossings; i++)
   {
@@ -106,7 +108,9 @@ int checkForStateEvent(DATA* data, LIST *eventList)
 
     if(sign(data->simulationInfo->zeroCrossings[i]) != sign(data->simulationInfo->zeroCrossingsPre[i]))
     {
-      debugStreamPrint(LOG_EVENTS, 0, "changed:   %s", (data->simulationInfo->zeroCrossingsPre[i] > 0) ? "TRUE -> FALSE" : "FALSE -> TRUE");
+      debugStreamPrint(LOG_EVENTS, 0, "changed:   %s\n", (data->simulationInfo->zeroCrossingsPre[i] > 0) ? "TRUE -> FALSE" : "FALSE -> TRUE");
+      printf("check state-event zerocrossing at time %g\n",  data->localData[0]->timeValue);
+      printf("changed:   %s\n", (data->simulationInfo->zeroCrossingsPre[i] > 0) ? "TRUE -> FALSE\n" : "FALSE -> TRUE\n");
       listPushFront(eventList, &(data->simulationInfo->zeroCrossingIndex[i]));
     }
     else
@@ -150,6 +154,8 @@ int checkEvents(DATA* data, threadData_t *threadData, LIST* eventLst, double *ev
 
   if (checkForStateEvent(data, solverInfo->eventLst))
   {
+    printf("solverInfo->solverRootFinding: %s\n", solverInfo->solverRootFinding ? "true" : "false");
+    // As die solver nie sy eie root finding doen nie, dan gebruik jy die default.
     if (!solverInfo->solverRootFinding)
     {
       findRoot(data, threadData, solverInfo->eventLst, &(solverInfo->currentTime));
@@ -182,14 +188,17 @@ int checkEvents(DATA* data, threadData_t *threadData, LIST* eventLst, double *ev
  */
 void handleEvents(DATA* data, threadData_t *threadData, LIST* eventLst, double *eventTime, SOLVER_INFO* solverInfo)
 {
+ printf("In handleEvents\n");
   TRACE_PUSH
   double time = data->localData[0]->timeValue;
   long i;
   LIST_NODE* it;
 
   /* time event */
+  //printf("\tdata->simulationInfo->sampleActivated: %s\n", solverInfo->solverNoEquidistantGrid ? "true" : "false");
   if(data->simulationInfo->sampleActivated)
   {
+    printf("We are experiencing a time event\n");
     storePreValues(data);
 
     /* activate time event */
@@ -198,12 +207,14 @@ void handleEvents(DATA* data, threadData_t *threadData, LIST* eventLst, double *
       {
         data->simulationInfo->samples[i] = 1;
         infoStreamPrint(LOG_EVENTS, 0, "[%ld] sample(%g, %g)", data->modelData->samplesInfo[i].index, data->modelData->samplesInfo[i].start, data->modelData->samplesInfo[i].interval);
+        printf("In handleEvents: [%ld] sample(%g, %g)\n\n", data->modelData->samplesInfo[i].index, data->modelData->samplesInfo[i].start, data->modelData->samplesInfo[i].interval);
       }
   }
   data->simulationInfo->chatteringInfo.lastStepsNumStateEvents-=data->simulationInfo->chatteringInfo.lastSteps[data->simulationInfo->chatteringInfo.currentIndex];
   /* state event */
   if(listLen(eventLst)>0)
   {
+    printf("We are experiencing a state event\n");
     data->localData[0]->timeValue = *eventTime;
     /* time = data->localData[0]->timeValue; */
 
@@ -292,7 +303,7 @@ void handleEvents(DATA* data, threadData_t *threadData, LIST* eventLst, double *
 void findRoot(DATA* data, threadData_t *threadData, LIST *eventList, double *eventTime)
 {
   TRACE_PUSH
-
+  printf("In findRoot:\n");
   long event_id;
   LIST_NODE* it;
   fortran_integer i=0;
@@ -312,6 +323,7 @@ void findRoot(DATA* data, threadData_t *threadData, LIST *eventList, double *eve
   for(it=listFirstNode(eventList); it; it=listNextNode(it))
   {
     infoStreamPrint(LOG_ZEROCROSSINGS, 0, "search for current event. Events in list: %ld", *((long*)listNodeData(it)));
+    printf("search for current event. Events in list: %ld\n", *((long*)listNodeData(it)));
   }
 
   /* write states to work arrays */
@@ -333,6 +345,7 @@ void findRoot(DATA* data, threadData_t *threadData, LIST *eventList, double *eve
       }
     }
     infoStreamPrint(LOG_ZEROCROSSINGS, 0, "Minimum value: %e", value);
+    printf("Minimum value: %e\n", value);
     for(it = listFirstNode(eventList); it; it = listNextNode(it))
     {
       if(value == fabs(data->simulationInfo->zeroCrossings[*((long*) listNodeData(it))]))
@@ -362,6 +375,7 @@ void findRoot(DATA* data, threadData_t *threadData, LIST *eventList, double *eve
     listPopFront(tmpEventList);
 
     infoStreamPrint(LOG_ZEROCROSSINGS, 0, "Event id: %ld ", event_id);
+    printf("Event id: %ld \n", event_id);
 
     listPushFront(eventList, &event_id);
   }

@@ -73,7 +73,7 @@ static uinteger minStep( const modelica_real* tqp, const uinteger size );
 modelica_integer prefixedName_performQSSSimulation(DATA* data, threadData_t *threadData, SOLVER_INFO* solverInfo)
 {
   TRACE_PUSH
-
+  printf("qss.c: First comment in performQSSSimulation\n\n");
   SIMULATION_INFO *simInfo = data->simulationInfo;
 
   MODEL_DATA *mData = data->modelData;
@@ -138,6 +138,12 @@ modelica_integer prefixedName_performQSSSimulation(DATA* data, threadData_t *thr
   printf("\tcurrentContextOld: %d\n", data->simulationInfo->currentContextOld);
   printf("\tjacobianEvals: %d\n", data->simulationInfo->jacobianEvals);
   printf("\tlambda: %d\n", data->simulationInfo->lambda);
+  printf("\tnextSampleEvent: %f\n", data->simulationInfo->nextSampleEvent);
+  printf("\tnextSampleTimes[0]: %f\n", data->simulationInfo->nextSampleTimes[0]);
+  printf("\tnextSampleTimes[1]: %f\n", data->simulationInfo->nextSampleTimes[1]);
+  printf("\tnextSampleTimes[2]: %f\n", data->simulationInfo->nextSampleTimes[2]);
+
+
   printf("\n\tThere are even more although I believe they will not be useful for now.\n\n");
 
   printf("(2) SIMULATION_DATA (**localData):\n");
@@ -198,10 +204,13 @@ modelica_integer prefixedName_performQSSSimulation(DATA* data, threadData_t *thr
   printf("\tsolverNoEquidistantGrid: %s\n", solverInfo->solverNoEquidistantGrid ? "true" : "false");
   printf("\tlastdesiredStep: %f\n", solverInfo->lastdesiredStep);
   printf("\tstateEvents: %d\n", solverInfo->stateEvents);
+  printf("\tdidEventStep: %d\n", solverInfo->didEventStep);
 //  printf("\teventLst.itemSize %d\n", solverInfo->eventLst->itemSize);
 //  printf("\teventLst.length %d\n", solverInfo->eventLst.length);
-printf("\tsampleEvents: %d\n", solverInfo->sampleEvents);
-printf("\tintegratorSteps: %d\n", solverInfo->integratorSteps);
+  printf("\tsampleEvents: %d\n", solverInfo->sampleEvents);
+  printf("\tintegratorSteps: %d\n", solverInfo->integratorSteps);
+
+
   printf("---------------###---------------\n\n");
 
 
@@ -300,10 +309,19 @@ printf("\tintegratorSteps: %d\n", solverInfo->integratorSteps);
 /***** Start main simulation loop *****/
 
   //ek gaan net een of twee iterasies doen om te verstaan wat hier aangaan.
-  //int antonInt=0;
-  //while(antonInt<4)
-  while(solverInfo->currentTime < simInfo->stopTime)
+  int antonInt=0;
+  //
+  //while(solverInfo->currentTime < simInfo->stopTime)
+  while(antonInt<4)
   {
+    antonInt++;
+    printf("\tlastdesiredStep: %f\n", solverInfo->lastdesiredStep);
+    printf("\tstateEvents: %d\n", solverInfo->stateEvents);
+    printf("\tdidEventStep: %d\n", solverInfo->didEventStep);
+  //  printf("\teventLst.itemSize %d\n", solverInfo->eventLst->itemSize);
+  //  printf("\teventLst.length %d\n", solverInfo->eventLst.length);
+    printf("\tsampleEvents: %d\n", solverInfo->sampleEvents);
+    printf("\tintegratorSteps: %d\n", solverInfo->integratorSteps);
     //antonInt++;
     modelica_integer success = 0;
     threadData->currentErrorStage = ERROR_SIMULATION;
@@ -685,4 +703,3 @@ static uinteger minStep(const modelica_real* tqp, const uinteger size )
   }
   return ind;
 }
-
