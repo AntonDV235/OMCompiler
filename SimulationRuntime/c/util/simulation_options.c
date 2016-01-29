@@ -377,7 +377,7 @@ const char *SOLVER_METHOD_DESC[S_MAX] = {
   "lobatto6 [sundial/kinsol needed]",
   "symbolic implicit euler, [compiler flag +symEuler needed]",
   "symbolic implicit euler with step-size control, [compiler flag +symEuler needed]",
-  "qss"
+  "qss [Die een waarop ek werk]"
 };
 
 const char *INIT_METHOD_NAME[IIM_MAX] = {
