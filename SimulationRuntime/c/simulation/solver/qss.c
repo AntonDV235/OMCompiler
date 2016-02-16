@@ -99,7 +99,7 @@ modelica_integer prefixedName_performQSSSimulation(DATA* data, threadData_t *thr
   modelica_real* state = sData->realVars;
   modelica_real* stateDer = sData->realVars + data->modelData->nStates;
   // Sit my eie shit hier in
-  modelica_real* antonDer = data->modelData->nStates;
+  //modelica_real* antonDer = data->modelData->nStates;
 
 
 
@@ -117,101 +117,101 @@ modelica_integer prefixedName_performQSSSimulation(DATA* data, threadData_t *thr
   modelica_real* tqp = NULL;    /* Time of the next change in state */
   modelica_real* nQh = NULL;    /* next value of the state */
   modelica_real* dQ = NULL;    /* change in quantity of every state, default = nominal*10^-4 */
-  printf("---------------###---------------\n\n");
-  printf("Some stats:\n\n");
-  printf("(A) Firstly, we consider some info of the object DATA *data:\n");
-  printf("(1) SIMULATION_INFO (*simulationInfo):\n");
-  printf("\tstartTime: %f\n", data->simulationInfo->startTime);
-  printf("\tstopTime: %f\n", data->simulationInfo->stopTime);
-  printf("\tnumSteps: %d\n", data->simulationInfo->numSteps);
-  printf("\ttolerance: %f\n", data->simulationInfo->tolerance);
-  printf("\ttolerance: %f\n", (*(*data).simulationInfo).tolerance);
-  printf("\t*solverMethod: %c\n", *(data->simulationInfo->solverMethod));
-  printf("\t*outputFormat: %c\n", *(data->simulationInfo->outputFormat));
-  printf("\t*variableFilter: %c\n", *(data->simulationInfo->variableFilter));
-  printf("\tlsMethod: %d\n", data->simulationInfo->lsMethod);
-  printf("\tmixedMethod: %d\n", data->simulationInfo->mixedMethod);
-  printf("\tnlsMethod: %d\n", data->simulationInfo->nlsMethod);
-  printf("\tnewtonStrategy: %d\n", data->simulationInfo->newtonStrategy);
-  printf("\tnlsCsvInfomation: %d\n", data->simulationInfo->nlsCsvInfomation);
-  printf("\tcurrentContext: %d\n", data->simulationInfo->currentContext);
-  printf("\tcurrentContextOld: %d\n", data->simulationInfo->currentContextOld);
-  printf("\tjacobianEvals: %d\n", data->simulationInfo->jacobianEvals);
-  printf("\tlambda: %d\n", data->simulationInfo->lambda);
-  printf("\tnextSampleEvent: %f\n", data->simulationInfo->nextSampleEvent);
-  printf("\tnextSampleTimes[0]: %f\n", data->simulationInfo->nextSampleTimes[0]);
-  printf("\tnextSampleTimes[1]: %f\n", data->simulationInfo->nextSampleTimes[1]);
-  printf("\tnextSampleTimes[2]: %f\n", data->simulationInfo->nextSampleTimes[2]);
-
-
-  printf("\n\tThere are even more although I believe they will not be useful for now.\n\n");
-
-  printf("(2) SIMULATION_DATA (**localData):\n");
-  printf("\ttimeValue: %f\n", data->localData[0]->timeValue);
-  printf("The following are the initial values.\n");
-  printf("\trealVars[0]: %f\n", data->localData[0]->realVars[0]);
-  printf("\trealVars[1]: %f\n", data->localData[0]->realVars[1]);
-  printf("\tintegerVars: %d\n", data->localData[0]->integerVars[1]);
-  printf("\t*booleanVars: %s\n", *(data->localData[0]->booleanVars));
-  printf("\t*stringVars: %s\n", *(data->localData[0]->stringVars));
-  //printf("\t*inlineVars: %f\n", *(data->localData[0]->inlineVars)); //Errors when attempting to print this one. Not sure why though.
-  printf("\n\tI am not sure this garbage struct is necessary. One \'timeValue\' is used. I am sure we can use a local variable or a similar route.\n\n");
-
-  printf("(3) MODEL_DATA (*modelData):\n");
-  printf("\trealVarsData[0].attribute.nominal: %f\n", data->modelData->realVarsData[0].attribute.nominal);
-  printf("\trealVarsData[1].attribute.nominal: %f\n", data->modelData->realVarsData[1].attribute.nominal);
-  printf("\trealVarsData[0].attribute.useStart: %s\n", data->modelData->realVarsData[0].attribute.useStart ? "true" : "false");
-  printf("\trealVarsData[1].attribute.useStart: %s\n", data->modelData->realVarsData[1].attribute.useStart ? "true" : "false");
-  printf("\tnStates: %d\n", data->modelData->nStates);
-  printf("\tnVariablesReal: %d\n", data->modelData->nVariablesReal);
-  printf("\tnDiscreteReal: %d\n", data->modelData->nDiscreteReal);
-  printf("\tnVariablesInteger: %d\n", data->modelData->nVariablesInteger);
-  printf("\tnVariablesBoolean: %d\n", data->modelData->nVariablesBoolean);
-  printf("\tnVariablesString: %d\n", data->modelData->nVariablesString);
-  printf("\tnParametersReal: %d\n", data->modelData->nParametersReal);
-  printf("\tnVariablesReal: %d\n", data->modelData->nVariablesReal);
-  printf("\tnParametersInteger: %d\n", data->modelData->nParametersInteger);
-  printf("\tnParametersBoolean: %d\n", data->modelData->nParametersBoolean);
-  printf("\tnParametersString: %d\n", data->modelData->nParametersString);
-  printf("\tnInputVars: %d\n", data->modelData->nInputVars);
-  printf("\tnOutputVars: %d\n", data->modelData->nOutputVars);
-  printf("\tnZeroCrossings: %d\n", data->modelData->nZeroCrossings);
-  printf("\tnMathEvents: %d\n", data->modelData->nMathEvents);
-  printf("\tnDelayExpressions: %d\n", data->modelData->nDelayExpressions);
-  printf("\tnExtObjs: %d\n", data->modelData->nExtObjs);
-  printf("\tnMixedSystems: %d\n", data->modelData->nMixedSystems);
-  printf("\tnLinearSystems: %d\n", data->modelData->nLinearSystems);
-  printf("\tnNonLinearSystems: %d\n", data->modelData->nNonLinearSystems);
-  printf("\tnStateSets: %d\n", data->modelData->nStateSets);
-  printf("\tnInlineVars: %d\n", data->modelData->nInlineVars);
-  printf("\tnOptimizeConstraints: %d\n", data->modelData->nOptimizeConstraints);
-  printf("\tnOptimizeFinalConstraints: %d\n\n", data->modelData->nOptimizeFinalConstraints);
-
-  printf("(4) RINGBUFFER* (simulationData) -- The first comment in the .c file is that this does not work. This struct is never used in the qss solver.\n\n");
-  //printf("\titemSize: %d\n", data->simulationData->itemSize);
-
-  printf("(5) OpenModelicaGeneratedFunctionCallbacks (*callback). Just a number of functions updating the results. Not even sure where all these functions are defined. We may want to investigate where these functions are defined if we want to have a full understanding of the how OpenModelica enables it's solvers.\n\n");
-
-  printf("(B) threadData_t threadData. Next we have to consider the object threadData_t. However, I cannot find the definition of this object. Must investigate and get all attributes.\n\n");
-
-  printf("(C) SOLVER_INFO solverInfo:\n");
-  printf("\tcurrentTime: %f\n", solverInfo->currentTime);
-  printf("\tcurrentStepSize: %f\n", solverInfo->currentStepSize);
-  printf("\tlaststep: %f\n", solverInfo->laststep);
-  printf("\tsolverMethod: %d\n", solverInfo->solverMethod);
-  printf("\tsolverStepSize: %f\n", solverInfo->solverStepSize);
-  printf("\tsolverRootFinding: %s\n", solverInfo->solverRootFinding ? "true" : "false");
-  printf("\tsolverNoEquidistantGrid: %s\n", solverInfo->solverNoEquidistantGrid ? "true" : "false");
-  printf("\tlastdesiredStep: %f\n", solverInfo->lastdesiredStep);
-  printf("\tstateEvents: %d\n", solverInfo->stateEvents);
-  printf("\tdidEventStep: %d\n", solverInfo->didEventStep);
-//  printf("\teventLst.itemSize %d\n", solverInfo->eventLst->itemSize);
-//  printf("\teventLst.length %d\n", solverInfo->eventLst.length);
-  printf("\tsampleEvents: %d\n", solverInfo->sampleEvents);
-  printf("\tintegratorSteps: %d\n", solverInfo->integratorSteps);
-
-
-  printf("---------------###---------------\n\n");
+//   printf("---------------###---------------\n\n");
+//   printf("Some stats:\n\n");
+//   printf("(A) Firstly, we consider some info of the object DATA *data:\n");
+//   printf("(1) SIMULATION_INFO (*simulationInfo):\n");
+//   printf("\tstartTime: %f\n", data->simulationInfo->startTime);
+//   printf("\tstopTime: %f\n", data->simulationInfo->stopTime);
+//   printf("\tnumSteps: %d\n", data->simulationInfo->numSteps);
+//   printf("\ttolerance: %f\n", data->simulationInfo->tolerance);
+//   printf("\ttolerance: %f\n", (*(*data).simulationInfo).tolerance);
+//   printf("\t*solverMethod: %c\n", *(data->simulationInfo->solverMethod));
+//   printf("\t*outputFormat: %c\n", *(data->simulationInfo->outputFormat));
+//   printf("\t*variableFilter: %c\n", *(data->simulationInfo->variableFilter));
+//   printf("\tlsMethod: %d\n", data->simulationInfo->lsMethod);
+//   printf("\tmixedMethod: %d\n", data->simulationInfo->mixedMethod);
+//   printf("\tnlsMethod: %d\n", data->simulationInfo->nlsMethod);
+//   printf("\tnewtonStrategy: %d\n", data->simulationInfo->newtonStrategy);
+//   printf("\tnlsCsvInfomation: %d\n", data->simulationInfo->nlsCsvInfomation);
+//   printf("\tcurrentContext: %d\n", data->simulationInfo->currentContext);
+//   printf("\tcurrentContextOld: %d\n", data->simulationInfo->currentContextOld);
+//   printf("\tjacobianEvals: %d\n", data->simulationInfo->jacobianEvals);
+//   printf("\tlambda: %d\n", data->simulationInfo->lambda);
+//   printf("\tnextSampleEvent: %f\n", data->simulationInfo->nextSampleEvent);
+//   printf("\tnextSampleTimes[0]: %f\n", data->simulationInfo->nextSampleTimes[0]);
+//   printf("\tnextSampleTimes[1]: %f\n", data->simulationInfo->nextSampleTimes[1]);
+//   printf("\tnextSampleTimes[2]: %f\n", data->simulationInfo->nextSampleTimes[2]);
+//
+//
+//   printf("\n\tThere are even more although I believe they will not be useful for now.\n\n");
+//
+//   printf("(2) SIMULATION_DATA (**localData):\n");
+//   printf("\ttimeValue: %f\n", data->localData[0]->timeValue);
+//   printf("The following are the initial values.\n");
+//   printf("\trealVars[0]: %f\n", data->localData[0]->realVars[0]);
+//   printf("\trealVars[1]: %f\n", data->localData[0]->realVars[1]);
+//   printf("\tintegerVars: %d\n", data->localData[0]->integerVars[1]);
+//   printf("\t*booleanVars: %s\n", *(data->localData[0]->booleanVars));
+//   printf("\t*stringVars: %s\n", *(data->localData[0]->stringVars));
+//   //printf("\t*inlineVars: %f\n", *(data->localData[0]->inlineVars)); //Errors when attempting to print this one. Not sure why though.
+//   printf("\n\tI am not sure this garbage struct is necessary. One \'timeValue\' is used. I am sure we can use a local variable or a similar route.\n\n");
+//
+//   printf("(3) MODEL_DATA (*modelData):\n");
+//   printf("\trealVarsData[0].attribute.nominal: %f\n", data->modelData->realVarsData[0].attribute.nominal);
+//   printf("\trealVarsData[1].attribute.nominal: %f\n", data->modelData->realVarsData[1].attribute.nominal);
+//   printf("\trealVarsData[0].attribute.useStart: %s\n", data->modelData->realVarsData[0].attribute.useStart ? "true" : "false");
+//   printf("\trealVarsData[1].attribute.useStart: %s\n", data->modelData->realVarsData[1].attribute.useStart ? "true" : "false");
+//   printf("\tnStates: %d\n", data->modelData->nStates);
+//   printf("\tnVariablesReal: %d\n", data->modelData->nVariablesReal);
+//   printf("\tnDiscreteReal: %d\n", data->modelData->nDiscreteReal);
+//   printf("\tnVariablesInteger: %d\n", data->modelData->nVariablesInteger);
+//   printf("\tnVariablesBoolean: %d\n", data->modelData->nVariablesBoolean);
+//   printf("\tnVariablesString: %d\n", data->modelData->nVariablesString);
+//   printf("\tnParametersReal: %d\n", data->modelData->nParametersReal);
+//   printf("\tnVariablesReal: %d\n", data->modelData->nVariablesReal);
+//   printf("\tnParametersInteger: %d\n", data->modelData->nParametersInteger);
+//   printf("\tnParametersBoolean: %d\n", data->modelData->nParametersBoolean);
+//   printf("\tnParametersString: %d\n", data->modelData->nParametersString);
+//   printf("\tnInputVars: %d\n", data->modelData->nInputVars);
+//   printf("\tnOutputVars: %d\n", data->modelData->nOutputVars);
+//   printf("\tnZeroCrossings: %d\n", data->modelData->nZeroCrossings);
+//   printf("\tnMathEvents: %d\n", data->modelData->nMathEvents);
+//   printf("\tnDelayExpressions: %d\n", data->modelData->nDelayExpressions);
+//   printf("\tnExtObjs: %d\n", data->modelData->nExtObjs);
+//   printf("\tnMixedSystems: %d\n", data->modelData->nMixedSystems);
+//   printf("\tnLinearSystems: %d\n", data->modelData->nLinearSystems);
+//   printf("\tnNonLinearSystems: %d\n", data->modelData->nNonLinearSystems);
+//   printf("\tnStateSets: %d\n", data->modelData->nStateSets);
+//   printf("\tnInlineVars: %d\n", data->modelData->nInlineVars);
+//   printf("\tnOptimizeConstraints: %d\n", data->modelData->nOptimizeConstraints);
+//   printf("\tnOptimizeFinalConstraints: %d\n\n", data->modelData->nOptimizeFinalConstraints);
+//
+//   printf("(4) RINGBUFFER* (simulationData) -- The first comment in the .c file is that this does not work. This struct is never used in the qss solver.\n\n");
+//   //printf("\titemSize: %d\n", data->simulationData->itemSize);
+//
+//   printf("(5) OpenModelicaGeneratedFunctionCallbacks (*callback). Just a number of functions updating the results. Not even sure where all these functions are defined. We may want to investigate where these functions are defined if we want to have a full understanding of the how OpenModelica enables it's solvers.\n\n");
+//
+//   printf("(B) threadData_t threadData. Next we have to consider the object threadData_t. However, I cannot find the definition of this object. Must investigate and get all attributes.\n\n");
+//
+//   printf("(C) SOLVER_INFO solverInfo:\n");
+//   printf("\tcurrentTime: %f\n", solverInfo->currentTime);
+//   printf("\tcurrentStepSize: %f\n", solverInfo->currentStepSize);
+//   printf("\tlaststep: %f\n", solverInfo->laststep);
+//   printf("\tsolverMethod: %d\n", solverInfo->solverMethod);
+//   printf("\tsolverStepSize: %f\n", solverInfo->solverStepSize);
+//   printf("\tsolverRootFinding: %s\n", solverInfo->solverRootFinding ? "true" : "false");
+//   printf("\tsolverNoEquidistantGrid: %s\n", solverInfo->solverNoEquidistantGrid ? "true" : "false");
+//   printf("\tlastdesiredStep: %f\n", solverInfo->lastdesiredStep);
+//   printf("\tstateEvents: %d\n", solverInfo->stateEvents);
+//   printf("\tdidEventStep: %d\n", solverInfo->didEventStep);
+// //  printf("\teventLst.itemSize %d\n", solverInfo->eventLst->itemSize);
+// //  printf("\teventLst.length %d\n", solverInfo->eventLst.length);
+//   printf("\tsampleEvents: %d\n", solverInfo->sampleEvents);
+//   printf("\tintegratorSteps: %d\n", solverInfo->integratorSteps);
+//
+//
+//   printf("---------------###---------------\n\n");
 
 
   /* allocate memory*/
@@ -247,17 +247,17 @@ modelica_integer prefixedName_performQSSSimulation(DATA* data, threadData_t *thr
     qik[i] = state[i];
     xik[i] = state[i];
     derXik[i] = stateDer[i];
-    printf("state[i]: %f\n", state[i]);
-    printf("stateDer[i]: %f\n", stateDer[i]);
-    printf("antonDer[i]: %f\n", antonDer);
-    printf("antonDer[i]: %f\n", antonDer);
+    //printf("state[i]: %f\n", state[i]);
+    //printf("stateDer[i]: %f\n", stateDer[i]);
+    //printf("antonDer[i]: %f\n", antonDer);
+    //printf("antonDer[i]: %f\n", antonDer);
 
     retValue = deltaQ(data, dQ[i], i, &dTnextQ, &nextQ, &diffQ);
     if (OK != retValue)
       return retValue;
-    printf("dTnextQ: %f\n", dTnextQ);
-    printf("nextQ: %f\n", nextQ);
-    printf("diffQ: %f\n", diffQ);
+    //printf("dTnextQ: %f\n", dTnextQ);
+    //printf("nextQ: %f\n", nextQ);
+  //  printf("diffQ: %f\n", diffQ);
     tqp[i] = tq[i] + dTnextQ;
     nQh[i] = nextQ;
   }
@@ -309,19 +309,20 @@ modelica_integer prefixedName_performQSSSimulation(DATA* data, threadData_t *thr
 /***** Start main simulation loop *****/
 
   //ek gaan net een of twee iterasies doen om te verstaan wat hier aangaan.
-  int antonInt=0;
+  //int antonInt=0;
+  //while(antonInt<4){
   //
-  //while(solverInfo->currentTime < simInfo->stopTime)
-  while(antonInt<4)
+  while(solverInfo->currentTime < simInfo->stopTime)
   {
-    antonInt++;
-    printf("\tlastdesiredStep: %f\n", solverInfo->lastdesiredStep);
-    printf("\tstateEvents: %d\n", solverInfo->stateEvents);
-    printf("\tdidEventStep: %d\n", solverInfo->didEventStep);
+    modelica_boolean syncStep = 0;
+    //antonInt++;
+    //printf("\tlastdesiredStep: %f\n", solverInfo->lastdesiredStep);
+    //printf("\tstateEvents: %d\n", solverInfo->stateEvents);
+    //printf("\tdidEventStep: %d\n", solverInfo->didEventStep);
   //  printf("\teventLst.itemSize %d\n", solverInfo->eventLst->itemSize);
   //  printf("\teventLst.length %d\n", solverInfo->eventLst.length);
-    printf("\tsampleEvents: %d\n", solverInfo->sampleEvents);
-    printf("\tintegratorSteps: %d\n", solverInfo->integratorSteps);
+  //  printf("\tsampleEvents: %d\n", solverInfo->sampleEvents);
+    //printf("\tintegratorSteps: %d\n", solverInfo->integratorSteps);
     //antonInt++;
     modelica_integer success = 0;
     threadData->currentErrorStage = ERROR_SIMULATION;
@@ -391,6 +392,9 @@ modelica_integer prefixedName_performQSSSimulation(DATA* data, threadData_t *thr
     tqp[ind] = tq[ind] + dTnextQ;
     nQh[ind] = nextQ;
 
+    data->callback->functionDAE(data, threadData);
+    syncStep = simulationUpdate(data, threadData, solverInfo);
+
     if (0 != strcmp("ia", data->simulationInfo->outputFormat))
     {
       communicateStatus("Running", (solverInfo->currentTime-simInfo->startTime)/(simInfo->stopTime-simInfo->startTime));
@@ -400,6 +404,11 @@ modelica_integer prefixedName_performQSSSimulation(DATA* data, threadData_t *thr
     for (i = 0; i < ROWS; i++)
       der[i] = -1;
     retValue = getDerWithStateK(pattern->index, pattern->leadindex, der, &numDer, ind);
+
+
+    //data->callback->functionDAE(data, threadData);
+    //syncStep = simulationUpdate(data, threadData, solverInfo);
+
 
     uinteger k = 0, j = 0;
     for (k = 0; k < numDer; k++)
@@ -417,7 +426,8 @@ modelica_integer prefixedName_performQSSSimulation(DATA* data, threadData_t *thr
         tx[j] = solverInfo->currentTime;
       }
     }
-
+    //syncStep = simulationUpdate(data, threadData, solverInfo);
+    //data->callback->functionDAE(data, threadData);
     /*
      * Recalculate all equations which are affected by state[ind].
      * Unfortunately all equations will be calculated up to now. And we need to evaluate
@@ -431,6 +441,8 @@ modelica_integer prefixedName_performQSSSimulation(DATA* data, threadData_t *thr
       //printf("xik[i]: %f\n", xik[i]);
       //printf("state[i]: %f\n", state[i]);
     }
+    //data->callback->functionDAE(data, threadData);
+    //syncStep = simulationUpdate(data, threadData, solverInfo);
 
     /* update continous system */
     sData->timeValue = solverInfo->currentTime;
@@ -440,6 +452,7 @@ modelica_integer prefixedName_performQSSSimulation(DATA* data, threadData_t *thr
     data->callback->functionAlgebraics(data, threadData);
     data->callback->output_function(data, threadData);
     data->callback->function_storeDelayed(data, threadData);
+    data->callback->functionDAE(data, threadData);
 
     for (i = 0; i < STATES; i++)
     {
@@ -451,6 +464,8 @@ modelica_integer prefixedName_performQSSSimulation(DATA* data, threadData_t *thr
      * Get derivatives affected by state[ind] and write back ALL derivatives. After that we have
      * states and derivatives for different times tx.
     */
+    //syncStep = simulationUpdate(data, threadData, solverInfo);
+    //data->callback->functionDAE(data, threadData);
 
     for (k = 0; k < numDer; k++)
     {
@@ -463,7 +478,7 @@ modelica_integer prefixedName_performQSSSimulation(DATA* data, threadData_t *thr
     {
       stateDer[i] = derXik[i];  /* write back all derivatives */
     }
-
+    //syncStep = simulationUpdate(data, threadData, solverInfo);
     /* recalculate the time of next change only for the affected states */
     for (k = 0; k < numDer; k++)
     {
@@ -474,11 +489,17 @@ modelica_integer prefixedName_performQSSSimulation(DATA* data, threadData_t *thr
       tqp[j] = solverInfo->currentTime + dTnextQ;
       nQh[j] = nextQ;
     }
-
+  //syncStep = simulationUpdate(data, threadData, solverInfo);
     /*sData->timeValue = solverInfo->currentTime;*/
-    solverInfo->laststep = solverInfo->currentTime;
-
+    //solverInfo->laststep = solverInfo->currentTime;
+    //syncStep = simulationUpdate(data, threadData, solverInfo);
+    //printf("syncStep: %d\n", syncStep);
     sim_result.emit(&sim_result, data, threadData);
+
+    //vir events
+    //syncStep = simulationUpdate(data, threadData, solverInfo);
+
+
 
     /* check if terminate()=true */
     if (terminationTerminate)
