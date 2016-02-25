@@ -73,7 +73,7 @@ static uinteger minStep( const modelica_real* tqp, const uinteger size );
 modelica_integer prefixedName_performQSSSimulation(DATA* data, threadData_t *threadData, SOLVER_INFO* solverInfo)
 {
   TRACE_PUSH
-
+  printf("liqss.c: First comment in performQSSSimulation\n\n");
   SIMULATION_INFO *simInfo = data->simulationInfo;
 
   MODEL_DATA *mData = data->modelData;
@@ -90,7 +90,7 @@ modelica_integer prefixedName_performQSSSimulation(DATA* data, threadData_t *thr
     infoStreamPrint(LOG_STDOUT, 0, "Jacobian or sparse pattern is not generated or failed to initialize.");
     return UNKNOWN;
   }
-  printSparseStructure(data, LOG_SOLVER);
+  //printSparseStructure(data, LOG_SOLVER);
 
 /* *********************************************************************************** */
   /* Initialization */
@@ -99,7 +99,7 @@ modelica_integer prefixedName_performQSSSimulation(DATA* data, threadData_t *thr
   modelica_real* state = sData->realVars;
   modelica_real* stateDer = sData->realVars + data->modelData->nStates;
   // Sit my eie shit hier in
-  modelica_real* antonDer = data->modelData->nStates;
+  //modelica_real* antonDer = data->modelData->nStates;
 
 
 
@@ -238,17 +238,17 @@ printf("\tintegratorSteps: %d\n", solverInfo->integratorSteps);
     qik[i] = state[i];
     xik[i] = state[i];
     derXik[i] = stateDer[i];
-    printf("state[i]: %f\n", state[i]);
-    printf("stateDer[i]: %f\n", stateDer[i]);
-    printf("antonDer[i]: %f\n", antonDer);
-    printf("antonDer[i]: %f\n", antonDer);
+    //printf("state[i]: %f\n", state[i]);
+    //printf("stateDer[i]: %f\n", stateDer[i]);
+    //printf("antonDer[i]: %f\n", antonDer);
+    //printf("antonDer[i]: %f\n", antonDer);
 
     retValue = deltaQ(data, dQ[i], i, &dTnextQ, &nextQ, &diffQ);
     if (OK != retValue)
       return retValue;
-    printf("dTnextQ: %f\n", dTnextQ);
-    printf("nextQ: %f\n", nextQ);
-    printf("diffQ: %f\n", diffQ);
+    //printf("dTnextQ: %f\n", dTnextQ);
+    //printf("nextQ: %f\n", nextQ);
+  //  printf("diffQ: %f\n", diffQ);
     tqp[i] = tq[i] + dTnextQ;
     nQh[i] = nextQ;
   }
@@ -304,6 +304,15 @@ printf("\tintegratorSteps: %d\n", solverInfo->integratorSteps);
   //while(antonInt<4)
   while(solverInfo->currentTime < simInfo->stopTime)
   {
+    modelica_boolean syncStep = 0;
+    //antonInt++;
+    //printf("\tlastdesiredStep: %f\n", solverInfo->lastdesiredStep);
+    //printf("\tstateEvents: %d\n", solverInfo->stateEvents);
+    //printf("\tdidEventStep: %d\n", solverInfo->didEventStep);
+  //  printf("\teventLst.itemSize %d\n", solverInfo->eventLst->itemSize);
+  //  printf("\teventLst.length %d\n", solverInfo->eventLst.length);
+  //  printf("\tsampleEvents: %d\n", solverInfo->sampleEvents);
+    //printf("\tintegratorSteps: %d\n", solverInfo->integratorSteps);
     //antonInt++;
     modelica_integer success = 0;
     threadData->currentErrorStage = ERROR_SIMULATION;
@@ -373,6 +382,9 @@ printf("\tintegratorSteps: %d\n", solverInfo->integratorSteps);
     tqp[ind] = tq[ind] + dTnextQ;
     nQh[ind] = nextQ;
 
+    data->callback->functionDAE(data, threadData);
+    syncStep = simulationUpdate(data, threadData, solverInfo);
+
     if (0 != strcmp("ia", data->simulationInfo->outputFormat))
     {
       communicateStatus("Running", (solverInfo->currentTime-simInfo->startTime)/(simInfo->stopTime-simInfo->startTime));
@@ -382,6 +394,11 @@ printf("\tintegratorSteps: %d\n", solverInfo->integratorSteps);
     for (i = 0; i < ROWS; i++)
       der[i] = -1;
     retValue = getDerWithStateK(pattern->index, pattern->leadindex, der, &numDer, ind);
+
+
+    //data->callback->functionDAE(data, threadData);
+    //syncStep = simulationUpdate(data, threadData, solverInfo);
+
 
     uinteger k = 0, j = 0;
     for (k = 0; k < numDer; k++)
@@ -399,7 +416,8 @@ printf("\tintegratorSteps: %d\n", solverInfo->integratorSteps);
         tx[j] = solverInfo->currentTime;
       }
     }
-
+    //syncStep = simulationUpdate(data, threadData, solverInfo);
+    //data->callback->functionDAE(data, threadData);
     /*
      * Recalculate all equations which are affected by state[ind].
      * Unfortunately all equations will be calculated up to now. And we need to evaluate
@@ -413,6 +431,8 @@ printf("\tintegratorSteps: %d\n", solverInfo->integratorSteps);
       //printf("xik[i]: %f\n", xik[i]);
       //printf("state[i]: %f\n", state[i]);
     }
+    //data->callback->functionDAE(data, threadData);
+    //syncStep = simulationUpdate(data, threadData, solverInfo);
 
     /* update continous system */
     sData->timeValue = solverInfo->currentTime;
@@ -422,6 +442,7 @@ printf("\tintegratorSteps: %d\n", solverInfo->integratorSteps);
     data->callback->functionAlgebraics(data, threadData);
     data->callback->output_function(data, threadData);
     data->callback->function_storeDelayed(data, threadData);
+    data->callback->functionDAE(data, threadData);
 
     for (i = 0; i < STATES; i++)
     {
@@ -433,6 +454,8 @@ printf("\tintegratorSteps: %d\n", solverInfo->integratorSteps);
      * Get derivatives affected by state[ind] and write back ALL derivatives. After that we have
      * states and derivatives for different times tx.
     */
+    //syncStep = simulationUpdate(data, threadData, solverInfo);
+    //data->callback->functionDAE(data, threadData);
 
     for (k = 0; k < numDer; k++)
     {
@@ -445,7 +468,7 @@ printf("\tintegratorSteps: %d\n", solverInfo->integratorSteps);
     {
       stateDer[i] = derXik[i];  /* write back all derivatives */
     }
-
+    //syncStep = simulationUpdate(data, threadData, solverInfo);
     /* recalculate the time of next change only for the affected states */
     for (k = 0; k < numDer; k++)
     {
@@ -456,11 +479,17 @@ printf("\tintegratorSteps: %d\n", solverInfo->integratorSteps);
       tqp[j] = solverInfo->currentTime + dTnextQ;
       nQh[j] = nextQ;
     }
-
+  //syncStep = simulationUpdate(data, threadData, solverInfo);
     /*sData->timeValue = solverInfo->currentTime;*/
-    solverInfo->laststep = solverInfo->currentTime;
-
+    //solverInfo->laststep = solverInfo->currentTime;
+    //syncStep = simulationUpdate(data, threadData, solverInfo);
+    //printf("syncStep: %d\n", syncStep);
     sim_result.emit(&sim_result, data, threadData);
+
+    //vir events
+    //syncStep = simulationUpdate(data, threadData, solverInfo);
+
+
 
     /* check if terminate()=true */
     if (terminationTerminate)
