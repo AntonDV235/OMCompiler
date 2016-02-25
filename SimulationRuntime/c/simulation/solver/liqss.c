@@ -57,8 +57,7 @@ static uinteger minStep(const modelica_real* tqp, const uinteger size );
 static void calculateState(DATA* data, threadData_t *threadData);
 
 
-/*! performQSSSimulation(DATA* data, SOLVER_INFO* solverInfo)
- *
+/*
  *  \param [ref] [data]
  *  \param [ref] [solverInfo]
  *
@@ -170,7 +169,6 @@ modelica_integer prefixedName_LIQSSSimulation(DATA* data, threadData_t *threadDa
 			der[i] = -1;
 		//getDerWithStateK(pattern->index, pattern->leadindex, der, &numDer, ind);
 		printf("numDer %d \n", numDer);
-
 
 		for (k = 0; k < STATES; k++){
 		    //j = der[k];
