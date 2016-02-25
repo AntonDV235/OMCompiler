@@ -36,17 +36,17 @@ enum error_msg
 
 // Debugging flag
 
-const bool DEBUG_LIQSS = true;
+const bool DEBUG_LIQSS = false;
 
 // Adding an iteration limit
 
-const bool ITERATION_LIMIT = true;
-const uinteger ITERATION_LIMIT_VALUE = 5;
+const bool ITERATION_LIMIT = false;
+const uinteger ITERATION_LIMIT_VALUE = 10;
 bool LIMIT = false;
 
 // Step-size factor. This is in relation to the nominal value of each state variable.
 
-const modelica_real deltaQFactor =1;
+const modelica_real deltaQFactor =0.1;
 
 static modelica_real calculateQ(const modelica_real der, const modelica_real xik, const modelica_real qLower, const modelica_real qUpper, const modelica_real qChosen);
 static modelica_real calculateQLower(const modelica_real qLower, const modelica_real xik, const modelica_real dQ);
@@ -168,10 +168,13 @@ modelica_integer prefixedName_performQSSSimulation(DATA* data, threadData_t *thr
 		/* get the derivatives depending on state[ind] */
 		for (i = 0; i < ROWS; i++)
 			der[i] = -1;
-		getDerWithStateK(pattern->index, pattern->leadindex, der, &numDer, ind);
+		//getDerWithStateK(pattern->index, pattern->leadindex, der, &numDer, ind);
+		printf("numDer %d \n", numDer);
 
-		for (k = 0; k < numDer; k++){
-		    j = der[k];
+
+		for (k = 0; k < STATES; k++){
+		    //j = der[k];
+			j=k;
 			if(DEBUG_LIQSS){
 				printf("%f %d\txik[j]: %.12f \n", solverInfo->currentTime, j, xik[j]);
 				printf("%f %d\tstateDer[j]: %.12f \n", solverInfo->currentTime, j, stateDer[j]);
@@ -179,20 +182,34 @@ modelica_integer prefixedName_performQSSSimulation(DATA* data, threadData_t *thr
 			}
 			xik[j] = xik[j] + stateDer[j] * (solverInfo->currentTime - timeOld[j]);
 			timeOld[j] = solverInfo->currentTime;
+			//state[j] = xik[k];
 			if(DEBUG_LIQSS){
 				printf("%f %d\txik[j]: %.12f \n", solverInfo->currentTime, j, xik[j]);
-				if(i==numDer-1)
+				if(i==STATES-1)
 					printf("\n");
 			}
 		}
 
-		for (j = 0; j < numDer; j++){
-    	    k = der[j];
+//		/*
+//		 * We have to update here since we will use the xik values,
+//		 * which are set as the state variables when updating qChosen
+//		 * for all the required state variables.
+//		 */
+//
+		for(i =0;i<STATES;i++){
+			state[i] =qChosen[i];
+		}
+        calculateState(data, threadData);
+        simulationUpdate(data, threadData, solverInfo);
 
+		//numDer
+		for (j = 0; j < STATES; j++){
+    	    //k = der[j];
+			k=j;
 			/*
 			* Only alter the q values for the state variable whose q values has not yet reached the x values
 			*/
-			if(qChosen[k] != xik[k]){
+			if(1){
 				qLower[k] = calculateQLower(qLower[k], xik[k], dQ[k]);
 				qUpper[k] = qLower[k] + 2*dQ[k];
 
@@ -203,26 +220,35 @@ modelica_integer prefixedName_performQSSSimulation(DATA* data, threadData_t *thr
 				* Can tidy this up perhaps -- let's do it now...
 				*/
 
-				if ((stateDer[k]*(qLower[k] - xik[k])) >= 0)
+				state[k] = qUpper[k];
+				calculateState(data, threadData);
+				modelica_real fqUpperJ = stateDer[k];
+
+				state[k] = qLower[k];
+				calculateState(data, threadData);
+				modelica_real fqLowerJ = stateDer[k];
+
+				state[k] = qChosen[k];
+				calculateState(data, threadData);
+
+				if ((fqLowerJ*(qLower[k] - xik[k])) >= 0)
 					qChosen[k] = qLower[k];
-				else if ((stateDer[k]*(qUpper[k] - xik[k])) >= 0 && (stateDer[k]*(qLower[k] - xik[k])) < 0)
+				else if ((fqUpperJ*(qUpper[k] - xik[k])) >= 0 && (fqLowerJ*(qLower[k] - xik[k])) < 0)
 					qChosen[k] = qUpper[k];
 				else{
-					printf ("Moet nou qTilde bereken!\n");
-
-					state[k] = qUpper[k];
-					calculateState(data, threadData);
-					modelica_real fqUpperJ = stateDer[k];
-
-					state[k] = qLower[k];
-					calculateState(data, threadData);
-					modelica_real fqLowerJ = stateDer[k];
-
 					modelica_real Ajj = (fqUpperJ - fqLowerJ)/(qUpper[k] - qLower[k]);
 					if(Ajj == 0)
 					  qChosen[k] = qChosen[k];
 					else
 					  qChosen[k] = qUpper[k] - (fqUpperJ/Ajj);
+				}
+
+				if(DEBUG_LIQSS){
+					printf("%f\t%d\tfqLowerJ: %.12f \n", solverInfo->currentTime, k, fqLowerJ);
+					printf("%f\t%d\tfqUpperJ: %.12f \n", solverInfo->currentTime, k, fqUpperJ);
+					printf("%f\t%d\tqLower[i]: %.12f \n", solverInfo->currentTime, k, qLower[k]);
+					printf("%f\t%d\tqUpper[i]: %.12f \n", solverInfo->currentTime, k, qUpper[k]);
+					printf("%f\t%d\tqChosen[i]: %.12f \n", solverInfo->currentTime, k, qChosen[k]);
 				}
 			}
 			else{
@@ -236,29 +262,32 @@ modelica_integer prefixedName_performQSSSimulation(DATA* data, threadData_t *thr
          * the qChosen values. We will rewrite the actual global variables later.
          * */
 
-		for (i = 0; i < numDer; i++){
-			k = der[i];
-			state[k] = qChosen[k];
-			if(DEBUG_LIQSS){
-				printf("%f\t%d\tqChosen[i]: %.12f \n", solverInfo->currentTime, k, qChosen[k]);
-				if(i==numDer-1)
-					printf("\n");
-			}
-		}
+//		for (i = 0; i < STATES; i++){
+//			//k = der[i];
+//			k=i;
+//			state[k] = qChosen[k];
+//			if(DEBUG_LIQSS){
+//				if(i==STATES-1)
+//					printf("\n");
+//				printf("%f\t%d\tqChosen[i]: %.12f \n", solverInfo->currentTime, k, qChosen[k]);
+//				if(i==STATES-1)
+//					printf("\n");
+//			}
+//		}
 
         /* update continuous system */
-        sData->timeValue = solverInfo->currentTime;
-        calculateState(data, threadData);
-        simulationUpdate(data, threadData, solverInfo);
+//        sData->timeValue = solverInfo->currentTime;
+//        calculateState(data, threadData);
+//        simulationUpdate(data, threadData, solverInfo);
 
 
-        /* Update the global variables for this round
-          * Remember we have calculated xik earlier
+         /* Update the global variables for this round
+          * Remember we have calculated qChosen earlier
           * These values has to be captured for the current time step
           * */
 
          for (i = 0; i < STATES; i++){
-             state[i] = xik[i];
+             state[i] = qChosen[i];
          }
 
          /* update continuous system */
@@ -268,33 +297,33 @@ modelica_integer prefixedName_performQSSSimulation(DATA* data, threadData_t *thr
 
          /* Now we calculate the next time */
 		for (i = 0; i < STATES; i++){
+			dTnextQ = nextTime(dQ[i], stateDer[i]);
+			time[i] = sData->timeValue + dTnextQ;
 			if(DEBUG_LIQSS){
 				if(i==0)
 					printf("We have now assigned qChosen to state. We did update. Now calculating nextTime.\n");
-					printf("%f\t%d\tstateDer[i]: %.10f\n", solverInfo->currentTime, i, stateDer[i]);
-					printf("%f\t%d\tstate[i]: %.10f\n", solverInfo->currentTime, i, state[i]);
-					if(i==STATES-1)
-						printf("\n");
-				}
-			dTnextQ = nextTime(dQ[i], stateDer[i]);
-			time[i] = time[i] + dTnextQ;
-		}
-
-		ind = minStep(time, STATES);
-
-		if(DEBUG_LIQSS){
-			for (i = 0; i < STATES; i++){
-				printf("%f\t%d\tdQ[i]: %.12f\n", solverInfo->currentTime, i, dQ[i]);
-				printf("%f\t%d\txik[i]: %.10f\n", solverInfo->currentTime, i, xik[i]);
 				printf("%f\t%d\tstateDer[i]: %.10f\n", solverInfo->currentTime, i, stateDer[i]);
 				printf("%f\t%d\tstate[i]: %.10f\n", solverInfo->currentTime, i, state[i]);
-				printf("%f\t%d\ttime[i]: %.12f \n", solverInfo->currentTime, i, time[i]);
-				printf("%f\t%d\tqChosen: %.12f \n\n", solverInfo->currentTime, i, qChosen[i]);
+				printf("%f\t%d\txik[i]: %.10f\n", solverInfo->currentTime, i, xik[i]);
+				printf("%f\t%d\tqChosen[i]: %.10f\n", solverInfo->currentTime, i, qChosen[i]);
+				printf("%f\t%d\tdTnextQ[i]: %.10f\n", solverInfo->currentTime, i, dTnextQ);
+				printf("%f\t%d\ttime[i]: %.10f\n", solverInfo->currentTime, i, time[i]);
+				if(i==STATES-1)
+					printf("\n");
 			}
 		}
 
-		sim_result.emit(&sim_result, data, threadData);
+		for (i = 0; i < STATES; i++){
+			state[i] = qChosen[i];
+		}
 
+		 sData->timeValue = solverInfo->currentTime;
+		         calculateState(data, threadData);
+		         simulationUpdate(data, threadData, solverInfo);
+
+		ind = minStep(time, STATES);
+
+		sim_result.emit(&sim_result, data, threadData);
 
 		TRACE_POP /* pop loop */
     }
