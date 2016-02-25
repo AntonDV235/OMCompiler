@@ -678,7 +678,7 @@ int solver_main(DATA* data, threadData_t *threadData, const char* init_initMetho
 
       /* overwrite the whole ring-buffer with initialized values */
       overwriteOldSimulationData(data);
-
+      printf("\nSolver_main.c: Just before entering performQSSSolver\n\n");
       infoStreamPrint(LOG_SOLVER, 0, "Start numerical integration (startTime: %g, stopTime: %g)", simInfo->startTime, simInfo->stopTime);
       retVal = data->callback->performQSSSimulation(data, threadData, &solverInfo);
       omc_alloc_interface.collect_a_little();

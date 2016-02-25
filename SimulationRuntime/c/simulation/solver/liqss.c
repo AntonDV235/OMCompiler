@@ -46,7 +46,7 @@ bool LIMIT = false;
 
 // Step-size factor. This is in relation to the nominal value of each state variable.
 
-const modelica_real deltaQFactor =0.1;
+const modelica_real deltaQFactor =0.001;
 
 static modelica_real calculateQ(const modelica_real der, const modelica_real xik, const modelica_real qLower, const modelica_real qUpper, const modelica_real qChosen);
 static modelica_real calculateQLower(const modelica_real qLower, const modelica_real xik, const modelica_real dQ);
@@ -64,7 +64,7 @@ static void calculateState(DATA* data, threadData_t *threadData);
  *
  *  This function performs the simulation controlled by solverInfo.
  */
-modelica_integer prefixedName_performQSSSimulation(DATA* data, threadData_t *threadData, SOLVER_INFO* solverInfo){
+modelica_integer prefixedName_LIQSSSimulation(DATA* data, threadData_t *threadData, SOLVER_INFO* solverInfo){
     TRACE_PUSH
 
     // This is used for time management

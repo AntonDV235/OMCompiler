@@ -85,13 +85,18 @@ static int simulationUpdate(DATA* data, threadData_t *threadData, SOLVER_INFO* s
 
   int syncRet = handleTimers(data, threadData, solverInfo);
   int syncRet1;
+  //printf("syncRet: %d\n", syncRet);
   do
   {
     int eventType = checkEvents(data, threadData, solverInfo->eventLst, &(solverInfo->currentTime), solverInfo);
+    //printf("EventType: %d\n", eventType);
     if(eventType > 0 || syncRet == 2) /* event */
     {
+      //printf("syncRet: %d\n", syncRet);
+      //printf("eventType: %d\n", eventType);
       threadData->currentErrorStage = ERROR_EVENTHANDLING;
       infoStreamPrint(LOG_EVENTS, 1, "%s event at time=%.12g", eventType == 1 ? "time" : "state", solverInfo->currentTime);
+      printf("%s event at timeq=%.12g\n", eventType == 1 ? "time" : "state", solverInfo->currentTime);
       /* prevent emit if noEventEmit flag is used */
       if (!(omc_flag[FLAG_NOEVENTEMIT])) /* output left limit */
         sim_result.emit(&sim_result, data, threadData);
@@ -116,6 +121,7 @@ static int simulationUpdate(DATA* data, threadData_t *threadData, SOLVER_INFO* s
     /***** check state selection *****/
     if (stateSelection(data, threadData, 1, 1))
     {
+      //printf("Ons uusasdadsfds");
       /* if new set is calculated reinit the solver */
       solverInfo->didEventStep = 1;
       overwriteOldSimulationData(data);
