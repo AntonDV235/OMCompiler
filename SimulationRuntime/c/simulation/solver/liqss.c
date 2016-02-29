@@ -56,7 +56,6 @@ static void getDerWithStateK(const unsigned int *index, const unsigned int* lead
 static uinteger minStep(const modelica_real* tqp, const uinteger size );
 static void calculateState(DATA* data, threadData_t *threadData);
 
-
 /*
  *  \param [ref] [data]
  *  \param [ref] [solverInfo]
@@ -153,7 +152,7 @@ modelica_integer prefixedName_LIQSSSimulation(DATA* data, threadData_t *threadDa
     ind = minStep(time, STATES);
 
     /***** Start main simulation loop *****/
-    while(solverInfo->currentTime < simInfo->stopTime && !LIMIT){
+    while(solverInfo->currentTime < simInfo->stopTime -1 && !LIMIT){
     	if(ITERATION_LIMIT)
     		if(currStepNo == ITERATION_LIMIT_VALUE - 1)
     			LIMIT = true;
@@ -167,24 +166,22 @@ modelica_integer prefixedName_LIQSSSimulation(DATA* data, threadData_t *threadDa
 		/* get the derivatives depending on state[ind] */
 		for (i = 0; i < ROWS; i++)
 			der[i] = -1;
-		//getDerWithStateK(pattern->index, pattern->leadindex, der, &numDer, ind);
-		printf("numDer %d \n", numDer);
+		getDerWithStateK(pattern->index, pattern->leadindex, der, &numDer, ind);
+		//printf("numDer %d \n", numDer);
+		//printf("ind %d \n", ind);
 
 		for (k = 0; k < STATES; k++){
 		    //j = der[k];
 			j=k;
+			xik[j] = xik[j] + stateDer[j] * (solverInfo->currentTime - timeOld[j]);
+			timeOld[j] = solverInfo->currentTime;
 			if(DEBUG_LIQSS){
 				printf("%f %d\txik[j]: %.12f \n", solverInfo->currentTime, j, xik[j]);
 				printf("%f %d\tstateDer[j]: %.12f \n", solverInfo->currentTime, j, stateDer[j]);
 				printf("%f %d\ttime[j]: %.12f \n", solverInfo->currentTime, j, time[j]);
-			}
-			xik[j] = xik[j] + stateDer[j] * (solverInfo->currentTime - timeOld[j]);
-			timeOld[j] = solverInfo->currentTime;
-			//state[j] = xik[k];
-			if(DEBUG_LIQSS){
 				printf("%f %d\txik[j]: %.12f \n", solverInfo->currentTime, j, xik[j]);
-				if(i==STATES-1)
-					printf("\n");
+					if(i==STATES-1)
+						printf("\n");
 			}
 		}
 
@@ -291,7 +288,7 @@ modelica_integer prefixedName_LIQSSSimulation(DATA* data, threadData_t *threadDa
          /* update continuous system */
          sData->timeValue = solverInfo->currentTime;
          calculateState(data, threadData);
-         simulationUpdate(data, threadData, solverInfo);
+         //simulationUpdate(data, threadData, solverInfo);
 
          /* Now we calculate the next time */
 		for (i = 0; i < STATES; i++){
@@ -315,9 +312,9 @@ modelica_integer prefixedName_LIQSSSimulation(DATA* data, threadData_t *threadDa
 			state[i] = qChosen[i];
 		}
 
-		 sData->timeValue = solverInfo->currentTime;
-		         calculateState(data, threadData);
-		         simulationUpdate(data, threadData, solverInfo);
+		sData->timeValue = solverInfo->currentTime;
+		calculateState(data, threadData);
+		//simulationUpdate(data, threadData, solverInfo);
 
 		ind = minStep(time, STATES);
 

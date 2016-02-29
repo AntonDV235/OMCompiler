@@ -92,8 +92,8 @@ static int simulationUpdate(DATA* data, threadData_t *threadData, SOLVER_INFO* s
     //printf("EventType: %d\n", eventType);
     if(eventType > 0 || syncRet == 2) /* event */
     {
-      //printf("syncRet: %d\n", syncRet);
-      //printf("eventType: %d\n", eventType);
+      printf("syncRet: %d\n", syncRet);
+      printf("eventType: %d\n", eventType);
       threadData->currentErrorStage = ERROR_EVENTHANDLING;
       infoStreamPrint(LOG_EVENTS, 1, "%s event at time=%.12g", eventType == 1 ? "time" : "state", solverInfo->currentTime);
       printf("%s event at timeq=%.12g\n", eventType == 1 ? "time" : "state", solverInfo->currentTime);
@@ -121,7 +121,7 @@ static int simulationUpdate(DATA* data, threadData_t *threadData, SOLVER_INFO* s
     /***** check state selection *****/
     if (stateSelection(data, threadData, 1, 1))
     {
-      //printf("Ons uusasdadsfds");
+      printf("Ons uusasdadsfds");
       /* if new set is calculated reinit the solver */
       solverInfo->didEventStep = 1;
       overwriteOldSimulationData(data);

@@ -233,6 +233,7 @@ int initializeSolverData(DATA* data, threadData_t *threadData, SOLVER_INFO* solv
     break;
   }
   case S_QSS: break;
+  case S_LIQSS: break;
 #if !defined(OMC_MINIMAL_RUNTIME)
   case S_DASSL:
   {
@@ -680,13 +681,29 @@ int solver_main(DATA* data, threadData_t *threadData, const char* init_initMetho
       overwriteOldSimulationData(data);
       printf("\nSolver_main.c: Just before entering performQSSSolver\n\n");
       infoStreamPrint(LOG_SOLVER, 0, "Start numerical integration (startTime: %g, stopTime: %g)", simInfo->startTime, simInfo->stopTime);
-      retVal = data->callback->performQSSSimulation(data, threadData, &solverInfo);
+      retVal = data->callback->LIQSSSimulation(data, threadData, &solverInfo);
       omc_alloc_interface.collect_a_little();
 
       /* terminate the simulation */
       finishSimulation(data, threadData, &solverInfo, outputVariablesAtEnd);
       omc_alloc_interface.collect_a_little();
     }
+    else if(S_LIQSS == solverInfo.solverMethod)
+        {
+          sim_result.emit(&sim_result,data,threadData);
+
+          /* overwrite the whole ring-buffer with initialized values */
+          overwriteOldSimulationData(data);
+          printf("\nSolver_main.c: Just before entering LIQSSSolver\n\n");
+          infoStreamPrint(LOG_SOLVER, 0, "Start numerical integration (startTime: %g, stopTime: %g)", simInfo->startTime, simInfo->stopTime);
+          retVal = data->callback->LIQSSSimulation(data, threadData, &solverInfo);
+          omc_alloc_interface.collect_a_little();
+
+          /* terminate the simulation */
+          finishSimulation(data, threadData, &solverInfo, outputVariablesAtEnd);
+          omc_alloc_interface.collect_a_little();
+        }
+
     /* starts the simulation main loop - standard solver interface */
     else
     {
