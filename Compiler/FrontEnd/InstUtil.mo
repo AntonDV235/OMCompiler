@@ -334,6 +334,7 @@ algorithm
         "OpenModelica" = Absyn.pathLastIdent(path2);
       then Util.assoc(name,{
         ("Expression",    DAE.T_CODE(DAE.C_EXPRESSION(),DAE.emptyTypeSource)),
+        ("ExpressionOrModification",    DAE.T_CODE(DAE.C_EXPRESSION_OR_MODIFICATION(),DAE.emptyTypeSource)),
         ("TypeName",      DAE.T_CODE(DAE.C_TYPENAME(),DAE.emptyTypeSource)),
         ("VariableName",  DAE.T_CODE(DAE.C_VARIABLENAME(),DAE.emptyTypeSource)),
         ("VariableNames", DAE.T_CODE(DAE.C_VARIABLENAMES(),DAE.emptyTypeSource))
@@ -8437,30 +8438,24 @@ algorithm
     case (DAE.ASUB(exp=exp),unbound) then crefFiltering(exp,unbound);
     case (DAE.PATTERN(pattern=pattern),unbound)
       equation
-        ((_,unbound)) = Patternm.traversePattern((pattern,unbound),patternFiltering);
+        (_,unbound) = Patternm.traversePattern(pattern,patternFiltering,unbound);
       then unbound;
     else inUnbound;
   end match;
 end crefFiltering;
 
 protected function patternFiltering
-  input tuple<DAE.Pattern,list<String>> inTpl;
-  output tuple<DAE.Pattern,list<String>> outTpl;
+  input DAE.Pattern inPat;
+  input list<String> inLst;
+  output DAE.Pattern outPat=inPat;
+  output list<String> unbound=inLst;
 algorithm
-  outTpl := match inTpl
-    local
-      list<String> unbound;
-      String id;
-      DAE.Pattern pattern;
-    case ((pattern as DAE.PAT_AS(id=id),unbound))
-      equation
-        unbound = List.filter1OnTrue(unbound,Util.stringNotEqual,id);
-      then ((pattern,unbound));
-    case ((pattern as DAE.PAT_AS_FUNC_PTR(id=id),unbound))
-      equation
-        unbound = List.filter1OnTrue(unbound,Util.stringNotEqual,id);
-      then ((pattern,unbound));
-    else inTpl;
+  unbound := match inPat
+    case DAE.PAT_AS()
+      then List.filter1OnTrue(unbound,Util.stringNotEqual,inPat.id);
+    case DAE.PAT_AS_FUNC_PTR()
+      then List.filter1OnTrue(unbound,Util.stringNotEqual,inPat.id);
+    else unbound;
   end match;
 end patternFiltering;
 
@@ -8541,7 +8536,7 @@ algorithm
       list<DAE.Statement> body;
     case (DAE.CASE(patterns=patterns,patternGuard=patternGuard,body=body,result=result,info=info,resultInfo=resultInfo),unbound)
       equation
-        ((_,unbound)) = Patternm.traversePattern((DAE.PAT_META_TUPLE(patterns),unbound),patternFiltering);
+        (_,unbound) = Patternm.traversePatternList(patterns,patternFiltering,unbound);
         (_,(unbound,_)) = Expression.traverseExpTopDown(DAE.META_OPTION(patternGuard),findUnboundVariableUse,(unbound,info));
         ((_,_,unbound)) = List.fold1(body, checkFunctionDefUseStmt, true, (false,false,unbound));
         (_,(unbound,_)) = Expression.traverseExpTopDown(DAE.META_OPTION(result),findUnboundVariableUse,(unbound,resultInfo));
@@ -8883,19 +8878,20 @@ algorithm
 //        then list(newEQFun(i, lhs_exp, rhs_exp, domainCr1, comment, info, fieldLst) for i in 2:N-1);
         then creatFieldEqs(lhs_exp, rhs_exp, domainCr, N, comment, info, fieldLst);
 
-      //left boundary extrapolation
-      case SCode.EQUATION(SCode.EQ_PDE(expLeft = lhs_exp, expRight = rhs_exp,
-                  domain = domainCr as Absyn.CREF_QUAL(name, subscripts, Absyn.CREF_IDENT(name="left")),
-                  comment = comment, info = info))
-        equation
-//          Absyn.CALL(function_ = Absyn.CREF_IDENT(name="extrapolateField", subscripts={}), functionArgs = Absyn.FUNCTIONARGS(args = {})) = rhs_exp;
-//          Absyn.CREF(fieldCr as Absyn.CREF_IDENT()) = lhs_exp;
+        //left boundary extrapolation
+/*        case SCode.EQUATION(SCode.EQ_PDE(expLeft = lhs_exp, expRight = rhs_exp,
+                      domain = domainCr as Absyn.CREF_QUAL(name, subscripts, Absyn.CREF_IDENT(name="left")),
+                      comment = comment, info = info))
+            equation
+//              Absyn.CALL(function_ = Absyn.CREF_IDENT(name="extrapolateField", subscripts={}), functionArgs = Absyn.FUNCTIONARGS(args = {})) = rhs_exp;
+//              Absyn.CREF(fieldCr as Absyn.CREF_IDENT()) = lhs_exp;
           fieldCr = matchExtrapAndField(lhs_exp, rhs_exp);
           domainCr1 = Absyn.CREF_IDENT(name, subscripts);
           (N,fieldLst) = getDomNFields(inDomFieldLst,domainCr1,info);
         then
           {extrapolateFieldEq(false, fieldCr, domainCr1, N, comment, info, fieldLst)};
-
+*/
+/*
       //right boundary extrapolation
       case SCode.EQUATION(SCode.EQ_PDE(expLeft = lhs_exp, expRight = rhs_exp,
                   domain = domainCr as Absyn.CREF_QUAL(name, subscripts, Absyn.CREF_IDENT(name="right")),
@@ -8903,47 +8899,103 @@ algorithm
         equation
 //          Absyn.CALL(function_ = Absyn.CREF_IDENT(name="extrapolateField", subscripts={}), functionArgs = Absyn.FUNCTIONARGS(args = {})) = rhs_exp;
 //          Absyn.CREF(fieldCr as Absyn.CREF_IDENT()) = lhs_exp;
+
           fieldCr = matchExtrapAndField(lhs_exp, rhs_exp);
           domainCr1 = Absyn.CREF_IDENT(name, subscripts);
           (N,fieldLst) = getDomNFields(inDomFieldLst,domainCr1,info);
         then
-          {extrapolateFieldEq(true, fieldCr, domainCr1, N, comment, info, fieldLst)};
-      //left boundary condition
+          {extrapolateFieldEq(true, fieldCr, domainCr1, N, comment, info, fieldLst)};*/
+      //left boundary condition or extrapolation
       case SCode.EQUATION(SCode.EQ_PDE(expLeft = lhs_exp, expRight = rhs_exp,
                   domain = domainCr as Absyn.CREF_QUAL(name, subscripts, Absyn.CREF_IDENT(name="left")),
                   comment = comment, info = info))
         equation
           domainCr1 = Absyn.CREF_IDENT(name, subscripts);
           (N,fieldLst) = getDomNFields(inDomFieldLst,domainCr1,info);
+          (lhs_exp, _) = Absyn.traverseExp(lhs_exp, extrapFieldTraverseFun, 1);
+          (rhs_exp, _) = Absyn.traverseExp(rhs_exp, extrapFieldTraverseFun, 1);
         then
           {newEQFun(1, lhs_exp, rhs_exp, domainCr1, comment, info, fieldLst)};
-      //right boundary condition
+      //right boundary condition or extrapolation
       case SCode.EQUATION(SCode.EQ_PDE(expLeft = lhs_exp, expRight = rhs_exp,
                   domain = domainCr as Absyn.CREF_QUAL(name, subscripts, Absyn.CREF_IDENT(name="right")),
                   comment = comment, info = info))
         equation
           domainCr1 = Absyn.CREF_IDENT(name, subscripts);
           (N,fieldLst) = getDomNFields(inDomFieldLst,domainCr1,info);
+          (lhs_exp, _) = Absyn.traverseExp(lhs_exp, extrapFieldTraverseFun, N);
+          (rhs_exp, _) = Absyn.traverseExp(rhs_exp, extrapFieldTraverseFun, N);
         then
           {newEQFun(N, lhs_exp, rhs_exp, domainCr1, comment, info, fieldLst)};
-
     end matchcontinue;
 
   outDiscretizedEQs := listAppend(inDiscretizedEQs, newDiscretizedEQs);
 end discretizePDE;
 
+protected function extrapFieldTraverseFun
+  input Absyn.Exp inExp;
+  input Integer inN "If N = 1 then left extrapolation, right extrapolation otherwise";
+  output Absyn.Exp outExp;
+  output Integer outN = inN;
+algorithm
+  outExp := match inExp
+    local
+      Absyn.Ident name;
+      list<Absyn.Subscript> subscripts;
+      Integer i;
+    case Absyn.CALL(
+                          function_ = Absyn.CREF_IDENT(name="extrapolateField", subscripts={}),
+                          functionArgs = Absyn.FUNCTIONARGS(args = {Absyn.CREF(Absyn.CREF_IDENT(name,subscripts))})
+                    )
+    equation
+      if inN == 1 then
+        i = 1;
+      else
+        i = -1;
+      end if;
+    then
+      Absyn.BINARY(
+               Absyn.BINARY(
+                 Absyn.INTEGER(2),
+                 Absyn.MUL(),
+                 Absyn.CREF(Absyn.CREF_IDENT(name, Absyn.SUBSCRIPT(Absyn.INTEGER(inN+i))::subscripts))
+               ),
+               Absyn.SUB(),
+               Absyn.CREF(Absyn.CREF_IDENT(name, Absyn.SUBSCRIPT(Absyn.INTEGER(inN+2*i))::subscripts))
+             );
+    else
+      inExp;
+  end match;
+
+
+end extrapFieldTraverseFun;
+
+
+
+
+
+
+
+//TODO: remove never called:
 protected function matchExtrapAndField
   input Absyn.Exp lhs_exp;
   input Absyn.Exp rhs_exp;
   output Absyn.ComponentRef fieldCr;
+  protected String s;
 algorithm
+  s := "Ahoj";
   fieldCr := match (lhs_exp, rhs_exp)
     local
-      Absyn.ComponentRef fcr;
-    case (Absyn.CALL(function_ = Absyn.CREF_IDENT(name="extrapolateField", subscripts={}), functionArgs = Absyn.FUNCTIONARGS(args = {})), Absyn.CREF(fcr as Absyn.CREF_IDENT()))
+      Absyn.ComponentRef fcr, fcr_arg;
+    case (Absyn.CALL(
+                          function_ = Absyn.CREF_IDENT(name="extrapolateField", subscripts={}),
+                          functionArgs = Absyn.FUNCTIONARGS(args = {Absyn.CREF(fcr_arg as Absyn.CREF_IDENT())})
+                    ),
+         Absyn.CREF(fcr as Absyn.CREF_IDENT())
+         )
     then
       fcr;
-    case (Absyn.CREF(fcr as Absyn.CREF_IDENT()),Absyn.CALL(function_ = Absyn.CREF_IDENT(name="extrapolateField", subscripts={}), functionArgs = Absyn.FUNCTIONARGS(args = {})))
+    case (Absyn.CREF(fcr as Absyn.CREF_IDENT()),Absyn.CALL(function_ = Absyn.CREF_IDENT(name="extrapolateField", subscripts={}), functionArgs = Absyn.FUNCTIONARGS(args = {Absyn.CREF(fcr_arg as Absyn.CREF_IDENT())})))
     then
       fcr;
   end match;
@@ -9138,7 +9190,7 @@ algorithm
         true = List.isMemberOnTrue(fieldCr,fieldLst,Absyn.crefEqual);
       then
         Absyn.CREF(Absyn.CREF_IDENT(name, Absyn.SUBSCRIPT(Absyn.INTEGER(i))::subscripts));
-    case Absyn.CALL(Absyn.CREF_IDENT("pder",subscripts),Absyn.FUNCTIONARGS({Absyn.CREF(fieldCr as Absyn.CREF_IDENT(name, subscripts)),Absyn.CREF(Absyn.CREF_IDENT(name="x"))},_))
+    case Absyn.CALL(Absyn.CREF_IDENT("pder",{}),Absyn.FUNCTIONARGS({Absyn.CREF(fieldCr as Absyn.CREF_IDENT(name, subscripts)),Absyn.CREF(Absyn.CREF_IDENT(name="x"))},_))
     //pder
       equation
         if not List.isMemberOnTrue(fieldCr,fieldLst,Absyn.crefEqual) then
@@ -9160,13 +9212,13 @@ algorithm
               Absyn.CREF(Absyn.CREF_QUAL(domName,{},Absyn.CREF_IDENT("dx",{})))
             )
           );
-    case Absyn.CALL(Absyn.CREF_IDENT("pder",subscripts),Absyn.FUNCTIONARGS({Absyn.CREF(_),_},_))
+    case Absyn.CALL(Absyn.CREF_IDENT("pder",{}),Absyn.FUNCTIONARGS({Absyn.CREF(_),_},_))
     //pder with differentiating wrt wrong variable
       equation
         Error.addSourceMessageAndFail(Error.COMPILER_ERROR,{"You are differentiating with respect to variable that is not a coordinate."}, info);
       then
         inExp;
-    case Absyn.CALL(Absyn.CREF_IDENT("pder",subscripts),Absyn.FUNCTIONARGS({_,_},_))
+    case Absyn.CALL(Absyn.CREF_IDENT("pder",{}),Absyn.FUNCTIONARGS({_,_},_))
       equation
         Error.addSourceMessageAndFail(Error.COMPILER_ERROR,{"Unsupported partial derivative."}, info);
       then
