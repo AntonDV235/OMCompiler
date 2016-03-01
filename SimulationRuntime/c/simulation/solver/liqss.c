@@ -20,12 +20,12 @@
 /*! enum error_msg
  * \brief  Returnvalues of the functions in this file
  */
-enum error_msg
+enum LIQSS_error_msg
 {
-  ISNAN = -3L,      /*!< Time of next change is #QNAN. */
-  UNKNOWN = -2L,    /*!< Unspecific error. */
-  OO_MEMORY = -1L,  /*!< Allocation of memory fails. */
-  OK = 0L           /*!< Everything is fine. */
+	LIQSS_ISNAN = -3L,      /*!< Time of next change is #QNAN. */
+	LIQSS_UNKNOWN = -2L,    /*!< Unspecific error. */
+	LIQSS_OO_MEMORY = -1L,  /*!< Allocation of memory fails. */
+	LIQSS_OK = 0L           /*!< Everything is fine. */
 };
 
 // Defining boolean in C
@@ -42,23 +42,20 @@ const bool DEBUG_LIQSS = false;
 
 const bool ITERATION_LIMIT = false;
 const uinteger ITERATION_LIMIT_VALUE = 10;
-bool LIMIT = false;
+bool LIMIT = true;
 
 // Step-size factor. This is in relation to the nominal value of each state variable.
 
-const modelica_real deltaQFactor =0.001;
+const modelica_real deltaQFactorLIQSS =0.01;
 
 static modelica_real calculateQ(const modelica_real der, const modelica_real xik, const modelica_real qLower, const modelica_real qUpper, const modelica_real qChosen);
 static modelica_real calculateQLower(const modelica_real qLower, const modelica_real xik, const modelica_real dQ);
 static modelica_real nextTime(const modelica_real dQ, const modelica_real der);
-static modelica_integer deltaQ(DATA* data, const modelica_real dQ, const modelica_integer index, modelica_real* dTnextQ, modelica_real* nextQ, modelica_real* diffQ);
-static void getDerWithStateK(const unsigned int *index, const unsigned int* leadindex, modelica_integer* der, uinteger* numDer, const uinteger k);
-static uinteger minStep(const modelica_real* tqp, const uinteger size );
+static void LIQSS_getDerWithStateK(const unsigned int *index, const unsigned int* leadindex, modelica_integer* der, uinteger* numDer, const uinteger k);
+static uinteger minimumStep(const modelica_real* tqp, const uinteger size );
 static void calculateState(DATA* data, threadData_t *threadData);
 
-
-/*! performQSSSimulation(DATA* data, SOLVER_INFO* solverInfo)
- *
+/*
  *  \param [ref] [data]
  *  \param [ref] [solverInfo]
  *
@@ -127,7 +124,7 @@ modelica_integer prefixedName_LIQSSSimulation(DATA* data, threadData_t *threadDa
     /* end - allocate memory */
 
     for (i = 0; i < STATES; i++){
-		dQ[i] = deltaQFactor * data->modelData->realVarsData[i].attribute.nominal;
+		dQ[i] = deltaQFactorLIQSS * data->modelData->realVarsData[i].attribute.nominal;
 		time[i] = timeOld[i] = simInfo->startTime;
 		xik[i] = state[i];
 		qLower[i] = state[i] - dQ[i];
@@ -151,10 +148,10 @@ modelica_integer prefixedName_LIQSSSimulation(DATA* data, threadData_t *threadDa
     currStepNo++;
 
     /* Find the next time step before going into the loop */
-    ind = minStep(time, STATES);
+    ind = minimumStep(time, STATES);
 
     /***** Start main simulation loop *****/
-    while(solverInfo->currentTime < simInfo->stopTime && !LIMIT){
+    while(solverInfo->currentTime < simInfo->stopTime -1 && !LIMIT){
     	if(ITERATION_LIMIT)
     		if(currStepNo == ITERATION_LIMIT_VALUE - 1)
     			LIMIT = true;
@@ -168,25 +165,22 @@ modelica_integer prefixedName_LIQSSSimulation(DATA* data, threadData_t *threadDa
 		/* get the derivatives depending on state[ind] */
 		for (i = 0; i < ROWS; i++)
 			der[i] = -1;
-		//getDerWithStateK(pattern->index, pattern->leadindex, der, &numDer, ind);
-		printf("numDer %d \n", numDer);
-
+		LIQSS_getDerWithStateK(pattern->index, pattern->leadindex, der, &numDer, ind);
+		//printf("numDer %d \n", numDer);
+		//printf("ind %d \n", ind);
 
 		for (k = 0; k < STATES; k++){
 		    //j = der[k];
 			j=k;
+			xik[j] = xik[j] + stateDer[j] * (solverInfo->currentTime - timeOld[j]);
+			timeOld[j] = solverInfo->currentTime;
 			if(DEBUG_LIQSS){
 				printf("%f %d\txik[j]: %.12f \n", solverInfo->currentTime, j, xik[j]);
 				printf("%f %d\tstateDer[j]: %.12f \n", solverInfo->currentTime, j, stateDer[j]);
 				printf("%f %d\ttime[j]: %.12f \n", solverInfo->currentTime, j, time[j]);
-			}
-			xik[j] = xik[j] + stateDer[j] * (solverInfo->currentTime - timeOld[j]);
-			timeOld[j] = solverInfo->currentTime;
-			//state[j] = xik[k];
-			if(DEBUG_LIQSS){
 				printf("%f %d\txik[j]: %.12f \n", solverInfo->currentTime, j, xik[j]);
-				if(i==STATES-1)
-					printf("\n");
+					if(i==STATES-1)
+						printf("\n");
 			}
 		}
 
@@ -293,7 +287,7 @@ modelica_integer prefixedName_LIQSSSimulation(DATA* data, threadData_t *threadDa
          /* update continuous system */
          sData->timeValue = solverInfo->currentTime;
          calculateState(data, threadData);
-         simulationUpdate(data, threadData, solverInfo);
+         //simulationUpdate(data, threadData, solverInfo);
 
          /* Now we calculate the next time */
 		for (i = 0; i < STATES; i++){
@@ -317,11 +311,11 @@ modelica_integer prefixedName_LIQSSSimulation(DATA* data, threadData_t *threadDa
 			state[i] = qChosen[i];
 		}
 
-		 sData->timeValue = solverInfo->currentTime;
-		         calculateState(data, threadData);
-		         simulationUpdate(data, threadData, solverInfo);
+		sData->timeValue = solverInfo->currentTime;
+		calculateState(data, threadData);
+		//simulationUpdate(data, threadData, solverInfo);
 
-		ind = minStep(time, STATES);
+		ind = minimumStep(time, STATES);
 
 		sim_result.emit(&sim_result, data, threadData);
 
@@ -355,7 +349,7 @@ modelica_integer prefixedName_LIQSSSimulation(DATA* data, threadData_t *threadDa
  *  \param [in] [k]  State to look for.
  */
 
-static void getDerWithStateK(const unsigned int *index, const unsigned int* leadindex, modelica_integer* der, uinteger* numDer, const uinteger k){
+static void LIQSS_getDerWithStateK(const unsigned int *index, const unsigned int* leadindex, modelica_integer* der, uinteger* numDer, const uinteger k){
 	uinteger start, j = 0;
 	if (0 < k)
 		start = leadindex[k-1];
@@ -373,7 +367,7 @@ static void getDerWithStateK(const unsigned int *index, const unsigned int* lead
  *  \return  Index of the state which will change first.
  */
 
-static uinteger minStep(const modelica_real* tqp, const uinteger size){
+static uinteger minimumStep(const modelica_real* tqp, const uinteger size){
 	uinteger ind = 0;
 	modelica_real tmin =
 	#if defined(_MSC_VER)

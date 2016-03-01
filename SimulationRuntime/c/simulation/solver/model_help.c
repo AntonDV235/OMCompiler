@@ -132,6 +132,9 @@ void saveZeroCrossings(DATA* data, threadData_t *threadData)
 
   debugStreamPrint(LOG_ZEROCROSSINGS, 0, "save all zero-crossings");
 
+  //printf("In saveZeroCrossings\n");
+  //printf("Number of zero crossings: %d\n", data->modelData->nZeroCrossings);
+
   for(i=0;i<data->modelData->nZeroCrossings;i++)
     data->simulationInfo->zeroCrossingsPre[i] = data->simulationInfo->zeroCrossings[i];
 

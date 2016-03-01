@@ -366,7 +366,8 @@ const char *SOLVER_METHOD_NAME[S_MAX] = {
   "symEuler",
   "symEulerSsc",
   "heun",
-  "liqss"
+  "liqss",
+  "qss"
 };
 
 const char *SOLVER_METHOD_DESC[S_MAX] = {
@@ -384,7 +385,8 @@ const char *SOLVER_METHOD_DESC[S_MAX] = {
   "symEuler - symbolic implicit euler, [compiler flag +symEuler needed]",
   "symEulerSsc - symbolic implicit euler with step-size control, [compiler flag +symEuler needed]",
   "heun - Heun's method (Runge-Kutta fixed step, order 2)",
-  "liqss - A QSS solver [experimental]"
+  "liqss - A LIQSS solver [experimental]",
+  "qss - A QSS solver [experimental]"
 };
 
 const char *INIT_METHOD_NAME[IIM_MAX] = {

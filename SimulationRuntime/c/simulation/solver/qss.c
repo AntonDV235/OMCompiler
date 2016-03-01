@@ -51,7 +51,7 @@ enum error_msg
 };
 
 const modelica_real EPS = 1e-15;
-const modelica_real deltaQFactor =0.0001;
+const modelica_real deltaQFactor =0.01;
 
 
 /* Needed if we want to write all the variables into a file*/

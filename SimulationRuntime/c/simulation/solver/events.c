@@ -188,7 +188,7 @@ int checkEvents(DATA* data, threadData_t *threadData, LIST* eventLst, double *ev
  */
 void handleEvents(DATA* data, threadData_t *threadData, LIST* eventLst, double *eventTime, SOLVER_INFO* solverInfo)
 {
-  //printf("In handleEvents\n");
+  printf("In handleEvents\n");
   TRACE_PUSH
   double time = data->localData[0]->timeValue;
   long i;
@@ -266,7 +266,7 @@ void handleEvents(DATA* data, threadData_t *threadData, LIST* eventLst, double *
   data->simulationInfo->chatteringInfo.currentIndex = (data->simulationInfo->chatteringInfo.currentIndex+1) % data->simulationInfo->chatteringInfo.numEventLimit;
 
   /* update the whole system */
-  //printf("Net voor updateDiscreteSystem\n");
+  printf("Net voor updateDiscreteSystem\n");
   updateDiscreteSystem(data, threadData);
   //printf("Net na updateDiscreteSystem\n");
   saveZeroCrossingsAfterEvent(data, threadData);
