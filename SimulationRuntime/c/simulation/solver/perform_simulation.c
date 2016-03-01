@@ -121,7 +121,7 @@ static int simulationUpdate(DATA* data, threadData_t *threadData, SOLVER_INFO* s
     /***** check state selection *****/
     if (stateSelection(data, threadData, 1, 1))
     {
-      printf("Ons uusasdadsfds");
+     printf("Ons uusasdadsfds");
       /* if new set is calculated reinit the solver */
       solverInfo->didEventStep = 1;
       overwriteOldSimulationData(data);
@@ -301,7 +301,7 @@ static void saveDasslStats(SOLVER_INFO* solverInfo)
 int prefixedName_performSimulation(DATA* data, threadData_t *threadData, SOLVER_INFO* solverInfo)
 {
   TRACE_PUSH
-
+  printf("prefixedName_performSimulation\n");
   int retValIntegrator=0;
   int retValue=0;
   int i, retry=0;
