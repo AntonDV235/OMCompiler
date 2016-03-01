@@ -243,7 +243,12 @@ protected function wrapFunctionCalls3
   output DAE.Exp outExp;
   output tuple<tuple<HashTableExpToExp.HashTable, Integer, list<BackendDAE.Equation>, list<BackendDAE.Var>, DAE.FunctionTree>, DAE.ElementSource> outTuple;
 algorithm
-  (outExp, outTuple) := Expression.traverseExpBottomUp(inExp, wrapFunctionCalls_main, inTuple);
+  if Expression.isExpIfExp(inExp) then
+    outExp  := inExp;
+    outTuple := inTuple;
+  else
+    (outExp, outTuple) := Expression.traverseExpBottomUp(inExp, wrapFunctionCalls_main, inTuple);
+  end if;
 end wrapFunctionCalls3;
 
 protected function wrapFunctionCalls_main
@@ -807,12 +812,8 @@ algorithm
          with variable indexes.*/
       outVarLst := inAccumVarLst;
       for cr_ in crefs loop
-        if Expression.isArrayType(ComponentReference.crefTypeFull(cr_)) then
-          arrayDim := ComponentReference.crefDims(cr_);
-          outVarLst := BackendVariable.createCSEArrayVar(cr_, ComponentReference.crefTypeFull(cr_), arrayDim)::outVarLst;
-        else
-          outVarLst := BackendVariable.createCSEVar(cr_, ComponentReference.crefTypeFull(cr_))::outVarLst;
-        end if;
+        arrayDim := ComponentReference.crefDims(cr_);
+        outVarLst := BackendVariable.createCSEArrayVar(cr_, ComponentReference.crefTypeFull(cr_), arrayDim)::outVarLst;
       end for;
     then outVarLst;
 
