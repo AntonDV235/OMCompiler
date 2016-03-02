@@ -42,7 +42,7 @@ const bool DEBUG_LIQSS = false;
 
 const bool ITERATION_LIMIT = false;
 const uinteger ITERATION_LIMIT_VALUE = 10;
-bool LIMIT = true;
+bool LIMIT = false;
 
 // Step-size factor. This is in relation to the nominal value of each state variable.
 
@@ -54,6 +54,9 @@ static modelica_real nextTime(const modelica_real dQ, const modelica_real der);
 static void LIQSS_getDerWithStateK(const unsigned int *index, const unsigned int* leadindex, modelica_integer* der, uinteger* numDer, const uinteger k);
 static uinteger minimumStep(const modelica_real* tqp, const uinteger size );
 static void calculateState(DATA* data, threadData_t *threadData);
+
+// Haal hierdie uit na debug
+static uinteger eventQDebug(modelica_real var1, modelica_real var2);
 
 /*
  *  \param [ref] [data]
@@ -70,7 +73,7 @@ modelica_integer prefixedName_LIQSSSimulation(DATA* data, threadData_t *threadDa
 
     uinteger currStepNo = 0, ind = 0;
     modelica_integer retValue = 0;
-    modelica_real dTnextQ = 0.0, nextQ = 0.0;
+    modelica_real dTnextQ = 0.0, nextQ = 0.0, a =0.0;
 
     /*
      * Investigate why this function must be called.
@@ -193,8 +196,11 @@ modelica_integer prefixedName_LIQSSSimulation(DATA* data, threadData_t *threadDa
 		for(i =0;i<STATES;i++){
 			state[i] =qChosen[i];
 		}
+		a = state[0];
         calculateState(data, threadData);
         simulationUpdate(data, threadData, solverInfo);
+        if(state[0] < a-0.2)
+        	printf("Hier le die prob: %f\t%f\t%f\n", solverInfo->currentTime, state[0], a);
 
 		//numDer
 		for (j = 0; j < STATES; j++){
@@ -284,10 +290,17 @@ modelica_integer prefixedName_LIQSSSimulation(DATA* data, threadData_t *threadDa
              state[i] = qChosen[i];
          }
 
+
+        a = state[0];
+
+
          /* update continuous system */
          sData->timeValue = solverInfo->currentTime;
          calculateState(data, threadData);
          //simulationUpdate(data, threadData, solverInfo);
+
+         if(state[0] < a-0.2)
+        	 printf("Hier le die prob2\n");
 
          /* Now we calculate the next time */
 		for (i = 0; i < STATES; i++){
@@ -311,9 +324,14 @@ modelica_integer prefixedName_LIQSSSimulation(DATA* data, threadData_t *threadDa
 			state[i] = qChosen[i];
 		}
 
+
+		a = state[0];
 		sData->timeValue = solverInfo->currentTime;
 		calculateState(data, threadData);
 		//simulationUpdate(data, threadData, solverInfo);
+
+		if(state[0] < a-0.2)
+		        	 printf("Hier le die prob3\n");
 
 		ind = minimumStep(time, STATES);
 
@@ -425,11 +443,34 @@ static modelica_real calculateQLower(const modelica_real qLower, const modelica_
  */
 
 static void calculateState(DATA* data, threadData_t *threadData){
+	// Ok, om uit te vind waar die event gehandle word gaan ek prints insit
+
+
+	SIMULATION_DATA *sData = (SIMULATION_DATA*)data->localData[0];
+	    modelica_real* state = sData->realVars;
+
+	modelica_real a = state[0];
+
+
 	externalInputUpdate(data);
+
 	data->callback->input_function(data, threadData);
 	data->callback->functionODE(data, threadData);
 	data->callback->functionAlgebraics(data, threadData);
 	data->callback->output_function(data, threadData);
-	data->callback->function_storeDelayed(data, threadData);
+	data->callback->function_storeDelayed(data, threadData);;
 	data->callback->functionDAE(data, threadData);
+
+	if(data->simulationInfo->needToIterate){
+		printf("needToIterate is een\n");
+		printf("nTI:  %d\n", data->simulationInfo->needToIterate);
+		printf("a: %f\tstate: %f\n", a, state[0]);
+	}
+}
+
+static uinteger eventQDebug(modelica_real var1, modelica_real var2){
+	if(var1 == var2)
+		return 0;
+	else
+		return 1;
 }
