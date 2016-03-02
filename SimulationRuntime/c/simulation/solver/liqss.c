@@ -204,7 +204,7 @@ modelica_integer prefixedName_LIQSSSimulation(DATA* data, threadData_t *threadDa
 		}
 
 		eventOccurQ=calculateState(data, threadData);
-        //simulationUpdate(data, threadData, solverInfo);
+        simulationUpdate(data, threadData, solverInfo);
 
 		//numDer
 		for (j = 0; j < STATES; j++){
@@ -302,8 +302,8 @@ modelica_integer prefixedName_LIQSSSimulation(DATA* data, threadData_t *threadDa
          /* update continuous system */
          sData->timeValue = solverInfo->currentTime;
          eventOccurQ=calculateState(data, threadData);
-         //simulationUpdate(data, threadData, solverInfo);
-
+         simulationUpdate(data, threadData, solverInfo);
+         sim_result.emit(&sim_result, data, threadData);
 
 
 
@@ -338,7 +338,7 @@ modelica_integer prefixedName_LIQSSSimulation(DATA* data, threadData_t *threadDa
 
 		sData->timeValue = solverInfo->currentTime;
 		eventOccurQ=calculateState(data, threadData);
-		//simulationUpdate(data, threadData, solverInfo);
+		simulationUpdate(data, threadData, solverInfo);
 
 
 
