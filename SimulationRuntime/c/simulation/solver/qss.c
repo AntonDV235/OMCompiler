@@ -53,6 +53,18 @@ enum error_msg
 const modelica_real EPS = 1e-15;
 const modelica_real deltaQFactor =0.01;
 
+// Defining boolean in C
+
+#define bool int
+#define true 1
+#define false 0
+
+// Adding an iteration limit
+
+const bool ITERATION_LIMIT1 = true;
+const uinteger ITERATION_LIMIT_VALUE1 = 1500;
+bool LIMIT1 = false;
+
 
 /* Needed if we want to write all the variables into a file*/
 /* #define D */
@@ -302,9 +314,12 @@ printf("\tintegratorSteps: %d\n", solverInfo->integratorSteps);
   //ek gaan net een of twee iterasies doen om te verstaan wat hier aangaan.
   //int antonInt=0;
   //while(antonInt<4)
-  while(solverInfo->currentTime < simInfo->stopTime)
+  while(solverInfo->currentTime < simInfo->stopTime && !LIMIT1)
   {
     modelica_boolean syncStep = 0;
+    if(ITERATION_LIMIT1)
+        		if(currStepNo == ITERATION_LIMIT_VALUE1 - 1)
+        			LIMIT1 = true;
     //antonInt++;
     //printf("\tlastdesiredStep: %f\n", solverInfo->lastdesiredStep);
     //printf("\tstateEvents: %d\n", solverInfo->stateEvents);

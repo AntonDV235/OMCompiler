@@ -109,8 +109,8 @@ int checkForStateEvent(DATA* data, LIST *eventList)
     if(sign(data->simulationInfo->zeroCrossings[i]) != sign(data->simulationInfo->zeroCrossingsPre[i]))
     {
       debugStreamPrint(LOG_EVENTS, 0, "changed:   %s\n", (data->simulationInfo->zeroCrossingsPre[i] > 0) ? "TRUE -> FALSE" : "FALSE -> TRUE");
-      printf("check state-event zerocrossing at time %g\n",  data->localData[0]->timeValue);
-      printf("changed:   %s\n", (data->simulationInfo->zeroCrossingsPre[i] > 0) ? "TRUE -> FALSE\n" : "FALSE -> TRUE\n");
+      //printf("check state-event zerocrossing at time %g\n",  data->localData[0]->timeValue);
+      //printf("changed:   %s\n", (data->simulationInfo->zeroCrossingsPre[i] > 0) ? "TRUE -> FALSE\n" : "FALSE -> TRUE\n");
       listPushFront(eventList, &(data->simulationInfo->zeroCrossingIndex[i]));
     }
     else
@@ -154,7 +154,7 @@ int checkEvents(DATA* data, threadData_t *threadData, LIST* eventLst, double *ev
 
   if (checkForStateEvent(data, solverInfo->eventLst))
   {
-    printf("solverInfo->solverRootFinding: %s\n", solverInfo->solverRootFinding ? "true" : "false");
+    //printf("solverInfo->solverRootFinding: %s\n", solverInfo->solverRootFinding ? "true" : "false");
     // As die solver nie sy eie root finding doen nie, dan gebruik jy die default.
     if (!solverInfo->solverRootFinding)
     {
@@ -188,17 +188,17 @@ int checkEvents(DATA* data, threadData_t *threadData, LIST* eventLst, double *ev
  */
 void handleEvents(DATA* data, threadData_t *threadData, LIST* eventLst, double *eventTime, SOLVER_INFO* solverInfo)
 {
-  printf("In handleEvents\n");
+  //printf("In handleEvents\n");
   TRACE_PUSH
   double time = data->localData[0]->timeValue;
   long i;
   LIST_NODE* it;
 
   /* time event */
-  printf("\tdata->simulationInfo->sampleActivated: %s\n", solverInfo->solverNoEquidistantGrid ? "true" : "false");
+  //printf("\tdata->simulationInfo->sampleActivated: %s\n", solverInfo->solverNoEquidistantGrid ? "true" : "false");
   if(data->simulationInfo->sampleActivated)
   {
-    printf("We are experiencing a time event\n");
+    //printf("We are experiencing a time event\n");
     storePreValues(data);
 
     /* activate time event */
@@ -237,9 +237,9 @@ void handleEvents(DATA* data, threadData_t *threadData, LIST* eventLst, double *
 
     if (!data->simulationInfo->chatteringInfo.messageEmitted && data->simulationInfo->chatteringInfo.lastStepsNumStateEvents == data->simulationInfo->chatteringInfo.numEventLimit)
     {
-      printf("binne die eerste if\n");
-      printf("binne die eerste if\n");
-      printf("binne die eerste if\n");
+      //printf("binne die eerste if\n");
+      //printf("binne die eerste if\n");
+      //printf("binne die eerste if\n");
       int numEventLimit = data->simulationInfo->chatteringInfo.numEventLimit;
       int currentIndex = data->simulationInfo->chatteringInfo.currentIndex;
       double t0 = data->simulationInfo->chatteringInfo.lastTimes[(currentIndex+1) % numEventLimit];
@@ -266,7 +266,7 @@ void handleEvents(DATA* data, threadData_t *threadData, LIST* eventLst, double *
   data->simulationInfo->chatteringInfo.currentIndex = (data->simulationInfo->chatteringInfo.currentIndex+1) % data->simulationInfo->chatteringInfo.numEventLimit;
 
   /* update the whole system */
-  printf("Net voor updateDiscreteSystem\n");
+  //printf("Net voor updateDiscreteSystem\n");
   updateDiscreteSystem(data, threadData);
   //printf("Net na updateDiscreteSystem\n");
   saveZeroCrossingsAfterEvent(data, threadData);

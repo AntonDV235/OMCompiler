@@ -84,15 +84,15 @@ void updateDiscreteSystem(DATA *data, threadData_t *threadData)
   {
     if(data->simulationInfo->needToIterate) {
       debugStreamPrint(LOG_EVENTS_V, 0, "reinit() call. Iteration needed!");
-      printf("reinit() call. Iteration needed!\n");
+      //printf("reinit() call. Iteration needed!\n");
     }
     if(relationChanged) {
       debugStreamPrint(LOG_EVENTS_V, 0, "relations changed. Iteration needed.");
-      printf("relations changed. Iteration needed.\n");
+      //printf("relations changed. Iteration needed.\n");
     }
     if(discreteChanged) {
       debugStreamPrint(LOG_EVENTS_V, 0, "discrete Variable changed. Iteration needed.");
-      printf("discrete Variable changed. Iteration needed.\n");
+      //printf("discrete Variable changed. Iteration needed.\n");
     }
 
     storePreValues(data);

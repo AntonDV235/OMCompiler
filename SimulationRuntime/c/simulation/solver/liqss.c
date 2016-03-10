@@ -28,6 +28,8 @@ enum LIQSS_error_msg
 	LIQSS_OK = 0L           /*!< Everything is fine. */
 };
 
+const modelica_real LIQSS_EPS = 1e-6;
+
 // Defining boolean in C
 
 #define bool int
@@ -41,12 +43,12 @@ const bool DEBUG_LIQSS = false;
 // Adding an iteration limit
 
 const bool ITERATION_LIMIT = false;
-const uinteger ITERATION_LIMIT_VALUE = 10;
+const uinteger ITERATION_LIMIT_VALUE = 150000;
 bool LIMIT = false;
 
 // Step-size factor. This is in relation to the nominal value of each state variable.
 
-const modelica_real deltaQFactorLIQSS =0.01;
+const modelica_real deltaQFactorLIQSS =0.0001;
 
 static modelica_real calculateQ(const modelica_real der, const modelica_real xik, const modelica_real qLower, const modelica_real qUpper, const modelica_real qChosen);
 static modelica_real calculateQLower(const modelica_real qLower, const modelica_real xik, const modelica_real dQ);
@@ -104,21 +106,21 @@ modelica_integer prefixedName_LIQSSSimulation(DATA* data, threadData_t *threadDa
 	modelica_integer* der = NULL;
 
     /* allocate memory*/
-    qChosen = (modelica_real*)calloc(STATES, sizeof(modelica_real));
+    qChosen = (modelica_real*)malloc(STATES * sizeof(modelica_real));
   	fail = (qChosen == NULL) ? 1 : ( 0 | fail);
-  	xik = (modelica_real*)calloc(STATES, sizeof(modelica_real));
+  	xik = (modelica_real*)malloc(STATES * sizeof(modelica_real));
   	fail = (xik == NULL) ? 1 : ( 0 | fail);
-  	qLower = (modelica_real*)calloc(STATES, sizeof(modelica_real));
+  	qLower = (modelica_real*)malloc(STATES * sizeof(modelica_real));
   	fail = (qLower == NULL) ? 1 : ( 0 | fail);
-  	qUpper = (modelica_real*)calloc(STATES, sizeof(modelica_real));
+  	qUpper = (modelica_real*)malloc(STATES * sizeof(modelica_real));
   	fail = (qUpper == NULL) ? 1 : ( 0 | fail);
-  	time = (modelica_real*)calloc(STATES, sizeof(modelica_real));
+  	time = (modelica_real*)malloc(STATES * sizeof(modelica_real));
   	fail = (time == NULL) ? 1 : ( 0 | fail);
-  	timeOld = (modelica_real*)calloc(STATES, sizeof(modelica_real));
+  	timeOld = (modelica_real*)malloc(STATES * sizeof(modelica_real));
   	fail = (timeOld == NULL) ? 1 : ( 0 | fail);
-  	dQ = (modelica_real*)calloc(STATES, sizeof(modelica_real));
+  	dQ = (modelica_real*)malloc(STATES * sizeof(modelica_real));
   	fail = (dQ == NULL) ? 1 : ( 0 | fail);
-    der = (modelica_integer*)calloc(STATES, sizeof(modelica_integer));
+    der = (modelica_integer*)malloc(STATES * sizeof(modelica_integer));
     fail = (der == NULL) ? 1 : ( 0 | fail);
 
     if (fail)
@@ -127,10 +129,12 @@ modelica_integer prefixedName_LIQSSSimulation(DATA* data, threadData_t *threadDa
 
     for (i = 0; i < STATES; i++){
 		dQ[i] = deltaQFactorLIQSS * data->modelData->realVarsData[i].attribute.nominal;
-		time[i] = timeOld[i] = simInfo->startTime;
+		//dQ[i] = deltaQFactorLIQSS;
+    	time[i] = timeOld[i] = simInfo->startTime;
 		xik[i] = state[i];
 		qLower[i] = state[i] - dQ[i];
 		qUpper[i] = state[i] + dQ[i];
+
 		if(stateDer[i] > 0)
 			qChosen[i] = qUpper[i];
 		else if(stateDer[i] < 0)
@@ -145,12 +149,62 @@ modelica_integer prefixedName_LIQSSSimulation(DATA* data, threadData_t *threadDa
 			printf("%f\t%d\tstateDer[i]: %.10f\n", solverInfo->currentTime, i, stateDer[i]);
 			printf("%f\t%d\tstate[i]: %.10f\n", solverInfo->currentTime, i, state[i]);
 			printf("%f\t%d\tdTnextQ: %.12f \n", solverInfo->currentTime, i, time[i]);
+			printf("%f\t%d\tqChosen[i]: %.12f \n", solverInfo->currentTime, i, qChosen[i]);
 		}
     }
     currStepNo++;
 
+
+	/* get the derivatives depending on state[ind] */
+	for (i = 0; i < ROWS; i++)
+		der[i] = -1;
+	for (k = 0; k < STATES; k++){
+		ind =k;
+		LIQSS_getDerWithStateK(pattern->index, pattern->leadindex, der, &numDer, ind);
+		printf("numDer %d \n", numDer);
+		printf("ind %d \n", ind);
+		for(i =0;i<ROWS;i++){
+			printf("der %d: %d\n",i,der[i]);
+		}
+	}
+
+	printf("What is difference between STATES %d and ROWS %d\n\n", STATES, ROWS);
+
+	i=0;
+	int start =0;
+	for(k =0;k<ROWS;k++){
+		printf("ROW: %d\n",k);
+		if(k!=0){
+			start=pattern->leadindex[k-1];
+			printf("** %d\n", pattern->leadindex[k-1]);
+			printf("** %d\n", pattern->leadindex[k]);
+		}
+		for (i=start;i<pattern->leadindex[k];i++){
+			printf("-- %d\n",pattern->index[i]);
+		}
+	}
+
+
+//	static void LIQSS_getDerWithStateK(const unsigned int *index, const unsigned int* leadindex, modelica_integer* der, uinteger* numDer, const uinteger k){
+//		uinteger start = 0, j = 0;
+//		if (0 < k)
+//			start = leadindex[k-1];
+//		for (uinteger i = start; i < leadindex[k]; i++){
+//			der[j] = index[i];
+//			j++;
+//		}
+//		*numDer = j;
+//	}
+
+//	for(k=0;k<(sizeof(pattern->index) / sizeof(int));k++){
+//		printf("gfgfg\n");
+//	}
+
+
+
     /* Find the next time step before going into the loop */
     ind = minimumStep(time, STATES);
+
 
     /***** Start main simulation loop *****/
     while(solverInfo->currentTime < simInfo->stopTime && !LIMIT){
@@ -163,20 +217,14 @@ modelica_integer prefixedName_LIQSSSimulation(DATA* data, threadData_t *threadDa
 		}
 		currStepNo++;
 
+		//Capping the time increase to dQ[ind]
+		if(time[ind]-solverInfo->currentTime>dQ[ind])
+			time[ind]=dQ[ind]+ solverInfo->currentTime;
+
 		if(time[ind] <= simInfo->stopTime)
 			solverInfo->currentTime = time[ind];
 		else
 			solverInfo->currentTime = simInfo->stopTime;
-
-
-
-
-		/* get the derivatives depending on state[ind] */
-//		for (i = 0; i < ROWS; i++)
-//			der[i] = -1;
-//		LIQSS_getDerWithStateK(pattern->index, pattern->leadindex, der, &numDer, ind);
-		//printf("numDer %d \n", numDer);
-		//printf("ind %d \n", ind);
 
 		for (k = 0; k < STATES; k++){
 		    //j = der[k];
@@ -187,11 +235,12 @@ modelica_integer prefixedName_LIQSSSimulation(DATA* data, threadData_t *threadDa
 				printf("%f %d\txik[j]: %.12f \n", solverInfo->currentTime, j, xik[j]);
 				printf("%f %d\tstateDer[j]: %.12f \n", solverInfo->currentTime, j, stateDer[j]);
 				printf("%f %d\ttime[j]: %.12f \n", solverInfo->currentTime, j, time[j]);
-				printf("%f %d\txik[j]: %.12f \n", solverInfo->currentTime, j, xik[j]);
+				printf("%f %d\tqChosen[j]: %.12f \n", solverInfo->currentTime, j, qChosen[j]);
 					if(i==STATES-1)
 						printf("\n");
 			}
 		}
+
 
 //		/*
 //		 * We have to update here since we will use the xik values,
@@ -248,7 +297,9 @@ modelica_integer prefixedName_LIQSSSimulation(DATA* data, threadData_t *threadDa
 				}
 
 
-				if(DEBUG_LIQSS){
+				//if(DEBUG_LIQSS){
+				if(DEBUG_LIQSS || qChosen[k] < qLower[k] || qChosen[k] > qUpper[k]){
+
 					printf("%f\t%d\tfqLowerJ: %.12f \n", solverInfo->currentTime, k, fqLowerJ);
 					printf("%f\t%d\tfqUpperJ: %.12f \n", solverInfo->currentTime, k, fqUpperJ);
 					printf("%f\t%d\tqLower[i]: %.12f \n", solverInfo->currentTime, k, qLower[k]);
@@ -409,11 +460,11 @@ modelica_integer prefixedName_LIQSSSimulation(DATA* data, threadData_t *threadDa
  */
 
 static void LIQSS_getDerWithStateK(const unsigned int *index, const unsigned int* leadindex, modelica_integer* der, uinteger* numDer, const uinteger k){
-	uinteger start, j = 0;
+	uinteger start = 0, j = 0;
 	if (0 < k)
 		start = leadindex[k-1];
-		for (uinteger i = start; i < leadindex[k]; i++){
-			der[j] = index[i];
+	for (uinteger i = start; i < leadindex[k]; i++){
+		der[j] = index[i];
 		j++;
 	}
 	*numDer = j;
@@ -453,7 +504,7 @@ static uinteger minimumStep(const modelica_real* tqp, const uinteger size){
 
 static modelica_real nextTime(const modelica_real dQ, const modelica_real der){
 	if (der == 0)
-		return dQ/1e-5;
+		return dQ/1e-2;
 	else
 		return dQ/fabs(der);
 }
@@ -469,12 +520,25 @@ static modelica_real nextTime(const modelica_real dQ, const modelica_real der){
  */
 
 static modelica_real calculateQLower(const modelica_real qLower, const modelica_real xik, const modelica_real dQ){
-	if(xik - qLower <= 0)
+	if(DEBUG_LIQSS){
+		printf("Inside calculateQLower\nqLower %f\txik %f\tdq %f\n",qLower,xik,dQ);
+		printf("Inside calculateQLower\nxik - qLower %f\t2dQ %f\n",xik - qLower,2*dQ);
+	}
+	if(xik - qLower <= LIQSS_EPS){
+		//printf("This one 1\n");
 		return qLower - dQ;
-	else if(xik - qLower >= 2*dQ)
+
+	}
+	else if(xik - qLower >= 2*dQ-LIQSS_EPS){
+		//printf("This one 2\n");
 		return qLower + dQ;
-	else
+
+	}
+	else{
+		//printf("This one 3\n");
 		return qLower;
+
+	}
 }
 
 /*
