@@ -38,7 +38,7 @@ const modelica_real LIQSS_EPS = 1e-6;
 
 // Debugging flag
 
-const bool DEBUG_LIQSS = false;
+const bool DEBUG_LIQSS = true;
 
 // Adding an iteration limit
 
