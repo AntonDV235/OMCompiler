@@ -16,6 +16,8 @@
 #include "util/omc_error.h"
 #include "simulation/options.h"
 
+#include <unistd.h>
+
 
 /*! enum error_msg
  * \brief  Returnvalues of the functions in this file
@@ -38,8 +40,9 @@ const modelica_real LIQSS_EPS = 1e-6;
 
 // Location of the nominal values for state variables
 
+
+
 char* LIQSS_Nominal = "/home/anton/Distros/OpenModelica/OMCompiler/NominalValuesModels/CardiovascularCirculationAggregate.txt";
-//char* LIQSS_Nominal = "/home/anton/Desktop/CardiovascularCirculationAggregate.txt";
 
 // Die een hier onder wil nie werk nie. Kan seker nie terug cd in fopen nie.
 //char* LIQSS_Nominal = "/../../../../NominalValuesModels/CardiovascularCirculationAggregate.txt";
@@ -93,6 +96,12 @@ modelica_integer prefixedName_LIQSSSimulation(DATA* data, threadData_t *threadDa
      * Without this, the solver crashes during execution.
      */
 
+
+	char cwd[1024];
+	if (getcwd(cwd, sizeof(cwd)) != NULL)
+	   fprintf(stdout, "Current working dir: %s\n", cwd);
+	else
+	   perror("getcwd() error");
 
 
     if (data->callback->initialAnalyticJacobianA(data, threadData)){
@@ -173,6 +182,8 @@ modelica_integer prefixedName_LIQSSSimulation(DATA* data, threadData_t *threadDa
 	   }
 
 	fclose(fptr);
+
+
 
 	// Now assign
 	for (line = 0; line < 22; line++){
