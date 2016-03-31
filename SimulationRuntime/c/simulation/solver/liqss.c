@@ -42,11 +42,15 @@ const modelica_real LIQSS_EPS = 1e-6;
 
 
 
-char* LIQSS_Nominal = "/home/anton/Distros/OpenModelica/OMCompiler/NominalValuesModels/CardiovascularCirculationAggregate.txt";
+/* This is for specifying nominal values. The full path needs to be specified as the solver is
+ * not aware of the current location and this may change depending on the manner in which the solver is interfaced with.
+ */
 
-// Die een hier onder wil nie werk nie. Kan seker nie terug cd in fopen nie.
-//char* LIQSS_Nominal = "/../../../../NominalValuesModels/CardiovascularCirculationAggregate.txt";
+char* LIQSS_Nominal_Location = "/home/anton/Distros/OpenModelica/OMCompiler/NominalValuesModels/CardiovascularCirculationAggregate.txt";
 
+const bool LIQSS_Nominal = true;
+
+const uinteger LIQSS_Nominal_Count = 22;
 
 // Debugging a specific state variable. Only logs from that specific state variable is considered.
 // Setting -1 considers all.
@@ -160,40 +164,43 @@ modelica_integer prefixedName_LIQSSSimulation(DATA* data, threadData_t *threadDa
     /* end - allocate memory */
 
     // Here we read the nominal values from a text file into the pointer array, yo!
-    int r, line =0;
-    double numberArray[22];
-    char c[1000];
-	FILE *fptr;
-	if ((fptr=fopen(LIQSS_Nominal,"r"))==NULL){
-	   printf("Error! opening file");
-	   exit(1);         /* Program exits if file pointer returns NULL. */
-	}
-	//fptr=fopen("/home/anton/Desktop/CardiovascularCirculationAggregate.txt","r");
-	r = fscanf(fptr,"%s %lf",c, &numberArray[0]);
-	printf("Data from file: %s %lf\n", c, numberArray[0]);
-	while (r != EOF){
-	   line++;
-	   r = fscanf(fptr,"%s %lf",c, &numberArray[line]);
-	   printf("Data from file: %s %lf\n", c, numberArray[line]);
-	}
-	for (line = 0; line < 22; line++)
-	   {
-		   printf("Number is: %lf\n", numberArray[line]);
-	   }
+    if(LIQSS_Nominal){
+		int r, line =0;
+		double numberArray[LIQSS_Nominal_Count];
+		char c[1000];
+		FILE *fptr;
+		if ((fptr=fopen(LIQSS_Nominal_Location,"r"))==NULL){
+		   printf("Error! opening file");
+		   exit(1);         /* Program exits if file pointer returns NULL. */
+		}
+		//fptr=fopen("/home/anton/Desktop/CardiovascularCirculationAggregate.txt","r");
+		r = fscanf(fptr,"%s %lf",c, &numberArray[0]);
+		printf("Data from file: %s %lf\n", c, numberArray[0]);
+		while (r != EOF){
+		   line++;
+		   r = fscanf(fptr,"%s %lf",c, &numberArray[line]);
+		   printf("Data from file: %s %lf\n", c, numberArray[line]);
+		}
+		for (line = 0; line < LIQSS_Nominal_Count; line++)
+		   {
+			   printf("Number is: %lf\n", numberArray[line]);
+		   }
 
-	fclose(fptr);
+		fclose(fptr);
+
+		// Now assign
+		for (line = 0; line < LIQSS_Nominal_Count; line++){
+		   nominalDeltaValues[line] = numberArray[line];
+		}
+    }
 
 
-
-	// Now assign
-	for (line = 0; line < 22; line++){
-	   nominalDeltaValues[line] = numberArray[line];
-	}
 
     for (i = 0; i < STATES; i++){
-		//dQ[i] = deltaQFactorLIQSS * data->modelData->realVarsData[i].attribute.nominal;
-    	dQ[i] = deltaQFactorLIQSS * nominalDeltaValues[i];
-    	//dQ[i] = deltaQFactorLIQSS;
+    	if(LIQSS_Nominal)
+    		dQ[i] = deltaQFactorLIQSS * nominalDeltaValues[i];
+    	else
+    		dQ[i] = deltaQFactorLIQSS;
     	printf("dQ[i]: %d  %f    %s\n", i, dQ[i], data->modelData->realVarsData[i].info.name);
 		//printf("Nominal[i]: %d  %f    %s\n", i, data->modelData->realVarsData[i].attribute.nominal, data->modelData->realVarsData[i].info.name);
 		printf("Real %s (nominal = %f);\n", data->modelData->realVarsData[i].info.name, data->modelData->realVarsData[i].attribute.nominal);
