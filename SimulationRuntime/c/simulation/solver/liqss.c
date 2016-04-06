@@ -16,6 +16,8 @@
 #include "util/omc_error.h"
 #include "simulation/options.h"
 
+#include <unistd.h>
+
 
 /*! enum error_msg
  * \brief  Returnvalues of the functions in this file
@@ -36,13 +38,32 @@ const modelica_real LIQSS_EPS = 1e-6;
 #define true 1
 #define false 0
 
+// Location of the nominal values for state variables
+
+
+
+/* This is for specifying nominal values. The full path needs to be specified as the solver is
+ * not aware of the current location and this may change depending on the manner in which the solver is interfaced with.
+ */
+
+char* LIQSS_Nominal_Location = "/home/anton/Distros/OpenModelica/OMCompiler/NominalValuesModels/CardiovascularCirculationAggregate.txt";
+
+const bool LIQSS_Nominal = false;
+
+const uinteger LIQSS_Nominal_Count = 22;
+
+// Debugging a specific state variable. Only logs from that specific state variable is considered.
+// Setting -1 considers all.
+
+const uinteger DEBUG_LIQSS_Value = 17;
+
 // Debugging flag
 
 const bool DEBUG_LIQSS = false;
 
 // Adding an iteration limit
 
-const bool ITERATION_LIMIT = true;
+const bool ITERATION_LIMIT = false;
 const uinteger ITERATION_LIMIT_VALUE = 15000;
 bool LIMIT = false;
 
@@ -80,6 +101,12 @@ modelica_integer prefixedName_LIQSSSimulation(DATA* data, threadData_t *threadDa
      */
 
 
+	char cwd[1024];
+	if (getcwd(cwd, sizeof(cwd)) != NULL)
+	   fprintf(stdout, "Current working dir: %s\n", cwd);
+	else
+	   perror("getcwd() error");
+
 
     if (data->callback->initialAnalyticJacobianA(data, threadData)){
 		infoStreamPrint(LOG_STDOUT, 0, "Jacobian or sparse pattern is not generated or failed to initialize.");
@@ -106,6 +133,8 @@ modelica_integer prefixedName_LIQSSSimulation(DATA* data, threadData_t *threadDa
 	modelica_integer* der = NULL; /* Hierdie mag dalk onnodig word. */
 	modelica_integer* updateCountPerVariable = NULL;
 
+	modelica_real* nominalDeltaValues = NULL; /*The nominal values that is used. We retrieve this from a text file. */
+
     /* allocate memory*/
     qChosen = (modelica_real*)malloc(STATES * sizeof(modelica_real));
   	fail = (qChosen == NULL) ? 1 : ( 0 | fail);
@@ -126,14 +155,55 @@ modelica_integer prefixedName_LIQSSSimulation(DATA* data, threadData_t *threadDa
     updateCountPerVariable = (modelica_integer*)malloc(STATES * sizeof(modelica_integer));
     fail = (updateCountPerVariable == NULL) ? 1 : ( 0 | fail);
 
+    nominalDeltaValues = (modelica_integer*)malloc(STATES * sizeof(modelica_integer));
+    fail = (nominalDeltaValues == NULL) ? 1 : ( 0 | fail);
+
+
     if (fail)
-        return OO_MEMORY;
+        return LIQSS_OO_MEMORY;
     /* end - allocate memory */
 
+    // Here we read the nominal values from a text file into the pointer array, yo!
+    if(LIQSS_Nominal){
+		int r, line =0;
+		double numberArray[LIQSS_Nominal_Count];
+		char c[1000];
+		FILE *fptr;
+		if ((fptr=fopen(LIQSS_Nominal_Location,"r"))==NULL){
+		   printf("Error! opening file");
+		   exit(1);         /* Program exits if file pointer returns NULL. */
+		}
+		//fptr=fopen("/home/anton/Desktop/CardiovascularCirculationAggregate.txt","r");
+		r = fscanf(fptr,"%s %lf",c, &numberArray[0]);
+		printf("Data from file: %s %lf\n", c, numberArray[0]);
+		while (r != EOF){
+		   line++;
+		   r = fscanf(fptr,"%s %lf",c, &numberArray[line]);
+		   printf("Data from file: %s %lf\n", c, numberArray[line]);
+		}
+		for (line = 0; line < LIQSS_Nominal_Count; line++)
+		   {
+			   printf("Number is: %lf\n", numberArray[line]);
+		   }
+
+		fclose(fptr);
+
+		// Now assign
+		for (line = 0; line < LIQSS_Nominal_Count; line++){
+		   nominalDeltaValues[line] = numberArray[line];
+		}
+    }
+
+
+
     for (i = 0; i < STATES; i++){
-		dQ[i] = deltaQFactorLIQSS * data->modelData->realVarsData[i].attribute.nominal;
-		//dQ[i] = deltaQFactorLIQSS;
-		printf("Nominal[i]: %d  %f    %s\n", i, data->modelData->realVarsData[i].attribute.nominal, data->modelData->realVarsData[i].info.name);
+    	if(LIQSS_Nominal)
+    		dQ[i] = deltaQFactorLIQSS * nominalDeltaValues[i];
+    	else
+    		dQ[i] = deltaQFactorLIQSS;
+    	printf("dQ[i]: %d  %f    %s\n", i, dQ[i], data->modelData->realVarsData[i].info.name);
+		//printf("Nominal[i]: %d  %f    %s\n", i, data->modelData->realVarsData[i].attribute.nominal, data->modelData->realVarsData[i].info.name);
+		printf("Real %s (nominal = %f);\n", data->modelData->realVarsData[i].info.name, data->modelData->realVarsData[i].attribute.nominal);
     	time[i] = timeOld[i] = simInfo->startTime;
 		xik[i] = state[i];
 		qLower[i] = state[i] - dQ[i];
@@ -149,13 +219,26 @@ modelica_integer prefixedName_LIQSSSimulation(DATA* data, threadData_t *threadDa
 		dTnextQ = nextTime(dQ[i], stateDer[i]);
 		time[i] = time[i] + dTnextQ;
 		if(DEBUG_LIQSS){
-			printf("%.12f\t%d\tdQ[i]: %.12f\n", solverInfo->currentTime, i, dQ[i]);
-			printf("%.12f\t%d\txik[i]: %.10f\n", solverInfo->currentTime, i, xik[i]);
-			printf("%.12f\t%d\tstateDer[i]: %.10f\n", solverInfo->currentTime, i, stateDer[i]);
-			printf("%.12f\t%d\tstate[i]: %.10f\n", solverInfo->currentTime, i, state[i]);
-			printf("%.12f\t%d\tdTnextQ: %.12f \n", solverInfo->currentTime, i, time[i]);
-			printf("%.12f\t%d\tqChosen[i]: %.12f \n", solverInfo->currentTime, i, qChosen[i]);
+    		if(DEBUG_LIQSS_Value == -1){
+				printf("%.12f\t%d\tdQ[i]: %.12f\n", solverInfo->currentTime, i, dQ[i]);
+				printf("%.12f\t%d\txik[i]: %.10f\n", solverInfo->currentTime, i, xik[i]);
+				printf("%.12f\t%d\tstateDer[i]: %.10f\n", solverInfo->currentTime, i, stateDer[i]);
+				printf("%.12f\t%d\tstate[i]: %.10f\n", solverInfo->currentTime, i, state[i]);
+				printf("%.12f\t%d\tdTnextQ: %.12f \n", solverInfo->currentTime, i, time[i]);
+				printf("%.12f\t%d\tqChosen[i]: %.12f \n", solverInfo->currentTime, i, qChosen[i]);
+    		}
+    		else{
+    			if(DEBUG_LIQSS_Value == i){
+    				printf("%.12f\t%d\tdQ[i]: %.12f\n", solverInfo->currentTime, i, dQ[i]);
+					printf("%.12f\t%d\txik[i]: %.10f\n", solverInfo->currentTime, i, xik[i]);
+					printf("%.12f\t%d\tstateDer[i]: %.10f\n", solverInfo->currentTime, i, stateDer[i]);
+					printf("%.12f\t%d\tstate[i]: %.10f\n", solverInfo->currentTime, i, state[i]);
+					printf("%.12f\t%d\tdTnextQ: %.12f \n", solverInfo->currentTime, i, time[i]);
+					printf("%.12f\t%d\tqChosen[i]: %.12f \n", solverInfo->currentTime, i, qChosen[i]);
+    			}
+    		}
 		}
+
     }
     currStepNo++;
 
@@ -223,9 +306,13 @@ modelica_integer prefixedName_LIQSSSimulation(DATA* data, threadData_t *threadDa
 		currStepNo++;
 
 		updateCountPerVariable[ind]++;
-		//Capping the time increase to dQ[ind]
+		//Capping the time increase to dQ[ind] -- To ensure that derivatives of zero do not stop the simulation.
 		if(time[ind]-solverInfo->currentTime>dQ[ind])
 			time[ind]=dQ[ind]+ solverInfo->currentTime;
+
+		//Forcing the minimum time step
+//		if(time[ind] - solverInfo->currentTime < 0.001)
+//			time[ind]=0.001+ solverInfo->currentTime;
 
 		if(time[ind] <= simInfo->stopTime)
 			solverInfo->currentTime = time[ind];
@@ -236,15 +323,28 @@ modelica_integer prefixedName_LIQSSSimulation(DATA* data, threadData_t *threadDa
 		    //j = der[k];
 			j=k;
 			xik[j] = xik[j] + stateDer[j] * (solverInfo->currentTime - timeOld[j]);
-			timeOld[j] = solverInfo->currentTime;
+
 			if(DEBUG_LIQSS){
-				printf("%.12f %d\txik[j]: %.12f \n", solverInfo->currentTime, j, xik[j]);
-				printf("%.12f %d\tstateDer[j]: %.12f \n", solverInfo->currentTime, j, stateDer[j]);
-				printf("%.12f %d\ttime[j]: %.12f \n", solverInfo->currentTime, j, time[j]);
-				printf("%.12f %d\tqChosen[j]: %.12f \n", solverInfo->currentTime, j, qChosen[j]);
-					if(i==STATES-1)
-						printf("\n");
+				if(DEBUG_LIQSS_Value == -1){
+					printf("%.12f %d\txik[j]: %.12f \n", solverInfo->currentTime, j, xik[j]);
+					printf("%.12f %d\tstateDer[j]: %.12f \n", solverInfo->currentTime, j, stateDer[j]);
+					printf("%.12f %d\ttime[j]: %.12f \n", solverInfo->currentTime, j, time[j]);
+					printf("%.12f %d\tqChosen[j]: %.12f \n", solverInfo->currentTime, j, qChosen[j]);
+						if(i==STATES-1)
+							printf("\n");
+				}
+				else{
+	    			if(DEBUG_LIQSS_Value == j){
+	    				printf("%.12f %d\txik[j]: %.12f \n", solverInfo->currentTime, j, xik[j]);
+						printf("%.12f %d\tstateDer[j]: %.12f \n", solverInfo->currentTime, j, stateDer[j]);
+						printf("%.12f %d\ttime[j]: %.12f \n", solverInfo->currentTime, j, time[j]);
+						printf("%.12f %d\tqChosen[j]: %.12f \n", solverInfo->currentTime, j, qChosen[j]);
+						printf("%.12f %d\tDeltaTime[j]: %.12f \n", solverInfo->currentTime, j, solverInfo->currentTime - timeOld[j]);
+						printf("@@@@\n");
+	    			}
+				}
 			}
+			timeOld[j] = solverInfo->currentTime;
 		}
 
 
@@ -299,18 +399,29 @@ modelica_integer prefixedName_LIQSSSimulation(DATA* data, threadData_t *threadDa
 					if(Ajj == 0)
 						qChosen[k] = qChosen[k];
 					else
-					    qChosen[k] = qUpper[k] - (fqUpperJ/Ajj);
+					    qChosen[k] = qUpper[k] - fabs((fqUpperJ/Ajj));
 				}
 
 
 				//if(DEBUG_LIQSS){
 				if(DEBUG_LIQSS || qChosen[k] < qLower[k] || qChosen[k] > qUpper[k]){
-
-					printf("%.12f\t%d\tfqLowerJ: %.12f \n", solverInfo->currentTime, k, fqLowerJ);
-					printf("%.12f\t%d\tfqUpperJ: %.12f \n", solverInfo->currentTime, k, fqUpperJ);
-					printf("%.12f\t%d\tqLower[i]: %.12f \n", solverInfo->currentTime, k, qLower[k]);
-					printf("%.12f\t%d\tqUpper[i]: %.12f \n", solverInfo->currentTime, k, qUpper[k]);
-					printf("%.12f\t%d\tqChosen[i]: %.12f \n", solverInfo->currentTime, k, qChosen[k]);
+					if(DEBUG_LIQSS_Value == -1){
+						printf("%.12f\t%d\tfqLowerJ: %.12f \n", solverInfo->currentTime, k, fqLowerJ);
+						printf("%.12f\t%d\tfqUpperJ: %.12f \n", solverInfo->currentTime, k, fqUpperJ);
+						printf("%.12f\t%d\tqLower[i]: %.12f \n", solverInfo->currentTime, k, qLower[k]);
+						printf("%.12f\t%d\tqUpper[i]: %.12f \n", solverInfo->currentTime, k, qUpper[k]);
+						printf("%.12f\t%d\tqChosen[i]: %.12f \n", solverInfo->currentTime, k, qChosen[k]);
+					}
+					else{
+						if(DEBUG_LIQSS_Value == k){
+							printf("%.12f\t%d\tfqLowerJ: %.12f \n", solverInfo->currentTime, k, fqLowerJ);
+							printf("%.12f\t%d\tfqUpperJ: %.12f \n", solverInfo->currentTime, k, fqUpperJ);
+							printf("%.12f\t%d\tqLower[i]: %.12f \n", solverInfo->currentTime, k, qLower[k]);
+							printf("%.12f\t%d\tqUpper[i]: %.12f \n", solverInfo->currentTime, k, qUpper[k]);
+							printf("%.12f\t%d\tqChosen[i]: %.12f \n", solverInfo->currentTime, k, qChosen[k]);
+							printf("@@@@\n");
+						}
+					}
 				}
 			}
 			else{
@@ -374,6 +485,7 @@ modelica_integer prefixedName_LIQSSSimulation(DATA* data, threadData_t *threadDa
 			dTnextQ = nextTime(dQ[i], stateDer[i]);
 			time[i] = sData->timeValue + dTnextQ;
 			if(DEBUG_LIQSS){
+				if(DEBUG_LIQSS_Value == -1){
 				if(i==0)
 					printf("We have now assigned qChosen to state. We did update. Now calculating nextTime.\n");
 				printf("%.12f\t%d\tstateDer[i]: %.10f\n", solverInfo->currentTime, i, stateDer[i]);
@@ -384,6 +496,18 @@ modelica_integer prefixedName_LIQSSSimulation(DATA* data, threadData_t *threadDa
 				printf("%.12f\t%d\ttime[i]: %.10f\n", solverInfo->currentTime, i, time[i]);
 				if(i==STATES-1)
 					printf("\n");
+				}
+				else{
+					if(DEBUG_LIQSS_Value == i){
+						printf("%.12f\t%d\tstateDer[i]: %.10f\n", solverInfo->currentTime, i, stateDer[i]);
+						printf("%.12f\t%d\tstate[i]: %.10f\n", solverInfo->currentTime, i, state[i]);
+						printf("%.12f\t%d\txik[i]: %.10f\n", solverInfo->currentTime, i, xik[i]);
+						printf("%.12f\t%d\tqChosen[i]: %.10f\n", solverInfo->currentTime, i, qChosen[i]);
+						printf("%.12f\t%d\tdTnextQ[i]: %.10f\n", solverInfo->currentTime, i, dTnextQ);
+						printf("%.12f\t%d\ttime[i]: %.10f\n", solverInfo->currentTime, i, time[i]);
+						printf("@@@@\n");
+					}
+				}
 			}
 		}
 
@@ -417,6 +541,7 @@ modelica_integer prefixedName_LIQSSSimulation(DATA* data, threadData_t *threadDa
 				else
 					qChosen[i] =state[i];
 				if(DEBUG_LIQSS){
+					if(DEBUG_LIQSS_Value == -1){
 					printf("When an event occurs\n\n");
 					printf("%.12f\t%d\tstateDer[i]: %.10f\n", solverInfo->currentTime, i, stateDer[i]);
 					printf("%.12f\t%d\tstate[i]: %.10f\n", solverInfo->currentTime, i, state[i]);
@@ -424,6 +549,19 @@ modelica_integer prefixedName_LIQSSSimulation(DATA* data, threadData_t *threadDa
 					printf("%.12f\t%d\tqChosen[i]: %.10f\n", solverInfo->currentTime, i, qChosen[i]);
 					printf("%.12f\t%d\tdTnextQ[i]: %.10f\n", solverInfo->currentTime, i, dTnextQ);
 					printf("%.12f\t%d\ttime[i]: %.10f\n", solverInfo->currentTime, i, time[i]);
+					}
+					else{
+						if(DEBUG_LIQSS_Value == i){
+							printf("When an event occurs\n\n");
+							printf("%.12f\t%d\tstateDer[i]: %.10f\n", solverInfo->currentTime, i, stateDer[i]);
+							printf("%.12f\t%d\tstate[i]: %.10f\n", solverInfo->currentTime, i, state[i]);
+							printf("%.12f\t%d\txik[i]: %.10f\n", solverInfo->currentTime, i, xik[i]);
+							printf("%.12f\t%d\tqChosen[i]: %.10f\n", solverInfo->currentTime, i, qChosen[i]);
+							printf("%.12f\t%d\tdTnextQ[i]: %.10f\n", solverInfo->currentTime, i, dTnextQ);
+							printf("%.12f\t%d\ttime[i]: %.10f\n", solverInfo->currentTime, i, time[i]);
+							printf("@@@@\n");
+						}
+					}
 				}
 			}
 		}
@@ -533,8 +671,8 @@ static modelica_real nextTime(const modelica_real dQ, const modelica_real der){
 
 static modelica_real calculateQLower(const modelica_real qLower, const modelica_real xik, const modelica_real dQ){
 	if(DEBUG_LIQSS){
-		printf("Inside calculateQLower\nqLower %f\txik %f\tdq %f\n",qLower,xik,dQ);
-		printf("Inside calculateQLower\nxik - qLower %f\t2dQ %f\n",xik - qLower,2*dQ);
+		//printf("Inside calculateQLower\nqLower %f\txik %f\tdq %f\n",qLower,xik,dQ);
+		//printf("Inside calculateQLower\nxik - qLower %f\t2dQ %f\n",xik - qLower,2*dQ);
 	}
 	if(xik - qLower <= LIQSS_EPS){
 		//printf("This one 1\n");

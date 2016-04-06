@@ -863,7 +863,8 @@ template simulationFile(SimCode simCode, String guid, Boolean isModelExchangeFMU
     #define prefixedName_LIQSSSimulation <%symbolName(modelNamePrefixStr,"LIQSSSimulation")%>
     #include <simulation/solver/liqss.c>
 
-
+	#define prefixedName_performQSSSimulationOM <%symbolName(modelNamePrefixStr,"performQSSSimulationOM")%>
+    #include <simulation/solver/perform_qss_simulation.c>
 
     >>
     %>
@@ -923,6 +924,7 @@ template simulationFile(SimCode simCode, String guid, Boolean isModelExchangeFMU
     struct OpenModelicaGeneratedFunctionCallbacks <%symbolName(modelNamePrefixStr,"callback")%> = {
        <% if isModelExchangeFMU then "NULL" else '(int (*)(DATA *, threadData_t *, void *)) <%symbolName(modelNamePrefixStr,"performSimulation")%>'%>,
        <% if isModelExchangeFMU then "NULL" else '(int (*)(DATA *, threadData_t *, void *)) <%symbolName(modelNamePrefixStr,"performQSSSimulation")%>'%>,
+	   <% if isModelExchangeFMU then "NULL" else '(int (*)(DATA *, threadData_t *, void *)) <%symbolName(modelNamePrefixStr,"performQSSSimulationOM")%>'%>,
 	   <% if isModelExchangeFMU then "NULL" else '(int (*)(DATA *, threadData_t *, void *)) <%symbolName(modelNamePrefixStr,"LIQSSSimulation")%>'%>,
        <% if isModelExchangeFMU then "NULL" else '<%symbolName(modelNamePrefixStr,"updateContinuousSystem")%>'%>,
        <%symbolName(modelNamePrefixStr,"callExternalObjectConstructors")%>,
