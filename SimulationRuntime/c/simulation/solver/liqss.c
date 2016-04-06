@@ -48,7 +48,7 @@ const modelica_real LIQSS_EPS = 1e-6;
 
 char* LIQSS_Nominal_Location = "/home/anton/Distros/OpenModelica/OMCompiler/NominalValuesModels/CardiovascularCirculationAggregate.txt";
 
-const bool LIQSS_Nominal = true;
+const bool LIQSS_Nominal = false;
 
 const uinteger LIQSS_Nominal_Count = 22;
 
@@ -160,7 +160,7 @@ modelica_integer prefixedName_LIQSSSimulation(DATA* data, threadData_t *threadDa
 
 
     if (fail)
-        return OO_MEMORY;
+        return LIQSS_OO_MEMORY;
     /* end - allocate memory */
 
     // Here we read the nominal values from a text file into the pointer array, yo!

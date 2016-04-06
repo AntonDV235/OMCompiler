@@ -55,11 +55,11 @@ const modelica_real EPS = 1e-15;
 /* Needed if we want to write all the variables into a file*/
 /* #define D */
 
-static modelica_integer deltaQ( DATA* data,const modelica_real dQ, const modelica_integer index, modelica_real* dTnextQ, modelica_real* nextQ, modelica_real* diffQ);
-static modelica_integer getDerWithStateK(const unsigned int *index, const unsigned int* leadindex, modelica_integer* der, uinteger* numDer, const uinteger k);
-static modelica_integer getStatesInDer(const unsigned int* index, const unsigned int* leadindex, const uinteger ROWS, const uinteger STATES, uinteger** StatesInDer);
-static modelica_integer qss_step(DATA* data, SOLVER_INFO* solverInfo);
-static uinteger minStep( const modelica_real* tqp, const uinteger size );
+static modelica_integer OMdeltaQ( DATA* data,const modelica_real dQ, const modelica_integer index, modelica_real* dTnextQ, modelica_real* nextQ, modelica_real* diffQ);
+static modelica_integer OMgetDerWithStateK(const unsigned int *index, const unsigned int* leadindex, modelica_integer* der, uinteger* numDer, const uinteger k);
+static modelica_integer OMgetStatesInDer(const unsigned int* index, const unsigned int* leadindex, const uinteger ROWS, const uinteger STATES, uinteger** StatesInDer);
+static modelica_integer OMqss_step(DATA* data, SOLVER_INFO* solverInfo);
+static uinteger OMminStep( const modelica_real* tqp, const uinteger size );
 
 /*! performQSSSimulation(DATA* data, SOLVER_INFO* solverInfo)
  *
@@ -68,8 +68,9 @@ static uinteger minStep( const modelica_real* tqp, const uinteger size );
  *
  *  This function performs the simulation controlled by solverInfo.
  */
-modelica_integer prefixedName_performQSSSimulation(DATA* data, threadData_t *threadData, SOLVER_INFO* solverInfo)
+int prefixedName_performQSSSimulationOM(DATA* data, threadData_t *threadData, SOLVER_INFO* solverInfo)
 {
+	printf("Inside OMQSS\n");
   TRACE_PUSH
 
   SIMULATION_INFO *simInfo = data->simulationInfo;
@@ -78,6 +79,18 @@ modelica_integer prefixedName_performQSSSimulation(DATA* data, threadData_t *thr
   modelica_integer retValIntegrator = 0;
   modelica_integer retValue = 0;
   uinteger ind = 0;
+  uinteger i = 0;
+  SIMULATION_DATA *sData = NULL;
+  modelica_real* state = NULL;
+  modelica_real* stateDer = NULL;
+  SPARSE_PATTERN* pattern = NULL;
+  uinteger ROWS = 0;
+  uinteger STATES = 0;
+  uinteger numDer = 0;
+  modelica_boolean fail = 0;
+  modelica_real *qik, *xik, *derXik, *tq, *tx, *tqp, *nQh, *dQ;
+  modelica_real diffQ = 0.0, dTnextQ = 0.0, nextQ = 0.0;
+  modelica_integer* der = NULL;
 
   solverInfo->currentTime = simInfo->startTime;
 
@@ -92,24 +105,24 @@ modelica_integer prefixedName_performQSSSimulation(DATA* data, threadData_t *thr
 
 /* *********************************************************************************** */
   /* Initialization */
-  uinteger i = 0; /* loop var */
-  SIMULATION_DATA *sData = (SIMULATION_DATA*)data->localData[0];
-  modelica_real* state = sData->realVars;
-  modelica_real* stateDer = sData->realVars + data->modelData->nStates;
-  const SPARSE_PATTERN* pattern = &(data->simulationInfo->analyticJacobians[data->callback->INDEX_JAC_A].sparsePattern);
-  const uinteger ROWS = data->simulationInfo->analyticJacobians[data->callback->INDEX_JAC_A].sizeRows;
-  const uinteger STATES = data->modelData->nStates;
-  uinteger numDer = 0;  /* number of derivatives influenced by state k */
+  i = 0; /* loop var */
+  sData = (SIMULATION_DATA*)data->localData[0];
+  state = sData->realVars;
+  stateDer = sData->realVars + data->modelData->nStates;
+  pattern = &(data->simulationInfo->analyticJacobians[data->callback->INDEX_JAC_A].sparsePattern);
+  ROWS = data->simulationInfo->analyticJacobians[data->callback->INDEX_JAC_A].sizeRows;
+  STATES = data->modelData->nStates;
+  numDer = 0;  /* number of derivatives influenced by state k */
 
-  modelica_boolean fail = 0;
-  modelica_real* qik = NULL;  /* Approximation of states */
-  modelica_real* xik = NULL;  /* states */
-  modelica_real* derXik = NULL;  /* Derivative of states */
-  modelica_real* tq = NULL;    /* Time of approximation, because not all approximations are calculated at a specific time, each approx. has its own timestamp */
-  modelica_real* tx = NULL;    /* Time of the states, because not all states are calculated at a specific time, each state has its own timestamp */
-  modelica_real* tqp = NULL;    /* Time of the next change in state */
-  modelica_real* nQh = NULL;    /* next value of the state */
-  modelica_real* dQ = NULL;    /* change in quantity of every state, default = nominal*10^-4 */
+  fail = 0;
+  qik = NULL;  /* Approximation of states */
+  xik = NULL;  /* states */
+  derXik = NULL;  /* Derivative of states */
+  tq = NULL;    /* Time of approximation, because not all approximations are calculated at a specific time, each approx. has its own timestamp */
+  tx = NULL;    /* Time of the states, because not all states are calculated at a specific time, each state has its own timestamp */
+  tqp = NULL;    /* Time of the next change in state */
+  nQh = NULL;    /* next value of the state */
+  dQ = NULL;    /* change in quantity of every state, default = nominal*10^-4 */
 
   /* allocate memory*/
   qik = (modelica_real*)calloc(STATES, sizeof(modelica_real));
@@ -136,7 +149,7 @@ modelica_integer prefixedName_performQSSSimulation(DATA* data, threadData_t *thr
 
   /* further initialization of local variables */
 
-  modelica_real diffQ = 0.0, dTnextQ = 0.0, nextQ = 0.0;
+  diffQ = 0.0; dTnextQ = 0.0; nextQ = 0.0;
   for (i = 0; i < STATES; i++)
   {
     dQ[i] = 0.0001 * data->modelData->realVarsData[i].attribute.nominal;
@@ -144,7 +157,7 @@ modelica_integer prefixedName_performQSSSimulation(DATA* data, threadData_t *thr
     qik[i] = state[i];
     xik[i] = state[i];
     derXik[i] = stateDer[i];
-    retValue = deltaQ(data, dQ[i], i, &dTnextQ, &nextQ, &diffQ);
+    retValue = OMdeltaQ(data, dQ[i], i, &dTnextQ, &nextQ, &diffQ);
     if (OK != retValue)
       return retValue;
     tqp[i] = tq[i] + dTnextQ;
@@ -152,7 +165,7 @@ modelica_integer prefixedName_performQSSSimulation(DATA* data, threadData_t *thr
   }
 
 /* Transform the sparsity pattern into a data structure for an index based access. */
-  modelica_integer* der = (modelica_integer*)calloc(ROWS, sizeof(modelica_integer));
+  der = (modelica_integer*)calloc(ROWS, sizeof(modelica_integer));
   if (NULL==der)
     return OO_MEMORY;
   for (i = 0; i < ROWS; i++)
@@ -199,6 +212,8 @@ modelica_integer prefixedName_performQSSSimulation(DATA* data, threadData_t *thr
   while(solverInfo->currentTime < simInfo->stopTime)
   {
     modelica_integer success = 0;
+	uinteger k = 0, j = 0;
+
     threadData->currentErrorStage = ERROR_SIMULATION;
     omc_alloc_interface.collect_a_little();
 
@@ -224,7 +239,7 @@ modelica_integer prefixedName_performQSSSimulation(DATA* data, threadData_t *thr
 
     currStepNo++;
 
-    ind = minStep(tqp, STATES);
+    ind = OMminStep(tqp, STATES);
 
     if (isnan(tqp[ind]))
     {
@@ -260,7 +275,7 @@ modelica_integer prefixedName_performQSSSimulation(DATA* data, threadData_t *thr
 #endif
 
     /* the state[ind] will change again in dTnextQ*/
-    retValue = deltaQ(data, dQ[ind], ind, &dTnextQ, &nextQ, &diffQ);
+    retValue = OMdeltaQ(data, dQ[ind], ind, &dTnextQ, &nextQ, &diffQ);
     if (OK != retValue)
       return retValue;
     tqp[ind] = tq[ind] + dTnextQ;
@@ -274,9 +289,9 @@ modelica_integer prefixedName_performQSSSimulation(DATA* data, threadData_t *thr
     /* get the derivatives depending on state[ind] */
     for (i = 0; i < ROWS; i++)
       der[i] = -1;
-    retValue = getDerWithStateK(pattern->index, pattern->leadindex, der, &numDer, ind);
+    retValue = OMgetDerWithStateK(pattern->index, pattern->leadindex, der, &numDer, ind);
 
-    uinteger k = 0, j = 0;
+    k = 0, j = 0;
     for (k = 0; k < numDer; k++)
     {
       j = der[k];
@@ -335,8 +350,8 @@ modelica_integer prefixedName_performQSSSimulation(DATA* data, threadData_t *thr
     /* recalculate the time of next change only for the affected states */
     for (k = 0; k < numDer; k++)
     {
-       j = der[k];
-      retValue = deltaQ(data, dQ[j], j, &dTnextQ, &nextQ, &diffQ);
+      j = der[k];
+      retValue = OMdeltaQ(data, dQ[j], j, &dTnextQ, &nextQ, &diffQ);
       if (OK != retValue)
         return retValue;
       tqp[j] = solverInfo->currentTime + dTnextQ;
@@ -443,7 +458,7 @@ modelica_integer prefixedName_performQSSSimulation(DATA* data, threadData_t *thr
  *  \param [out] [diffQ]  Difference between the states current and future value.
  *  \return  [0]  Everything is fine.
  */
-static modelica_integer deltaQ( DATA* data, const modelica_real dQ, const modelica_integer index, modelica_real* dTnextQ, modelica_real* nextQ, modelica_real* diffQ)
+static modelica_integer OMdeltaQ( DATA* data, const modelica_real dQ, const modelica_integer index, modelica_real* dTnextQ, modelica_real* nextQ, modelica_real* diffQ)
 {
 
   /* localData[0] because old values in the ringbuffer are not stored in QSS1 and so the ringbuffer will not be rotated. */
@@ -470,7 +485,7 @@ static modelica_integer deltaQ( DATA* data, const modelica_real dQ, const modeli
   return OK;
 }
 
-/*! static int getDerWithStateK(const unsigned int *index, const unsigned int* leadindex, int* der, unsigned int* numDer, const unsigned int k)
+/*! static int OMgetDerWithStateK(const unsigned int *index, const unsigned int* leadindex, int* der, unsigned int* numDer, const unsigned int k)
  *  \brief  Returns the indices of all derivatives with state k inside.
  *  \param [ref] [index]
  *  \param [ref] [leadindex]
@@ -479,13 +494,13 @@ static modelica_integer deltaQ( DATA* data, const modelica_real dQ, const modeli
  *  \param [in] [k]  State to look for.
  *  \return [0]  Everything is fine.
  */
-static modelica_integer getDerWithStateK(const unsigned int *index, const unsigned int* leadindex, modelica_integer* der, uinteger* numDer, const uinteger k)
+static modelica_integer OMgetDerWithStateK(const unsigned int *index, const unsigned int* leadindex, modelica_integer* der, uinteger* numDer, const uinteger k)
 {
-  uinteger start = 0;
+  uinteger start = 0, j, i;
   if (0 < k)
     start = leadindex[k - 1];
-  uinteger j = 0;
-  uinteger i = 0;
+  j = 0;
+  i = 0;
   for (i = start; i < leadindex[k]; i++)
   {
     der[j] = index[i];
@@ -494,6 +509,7 @@ static modelica_integer getDerWithStateK(const unsigned int *index, const unsign
   *numDer = j;
   return OK;
 }
+
 /*! static int getStatesInDer(const unsigned int* index, const unsigned int* leadindex, const unsigned int ROWS, const unsigned int STATES, unsigned int** StatesInDer)
  *  \brief  Return the indices of all states in each derivative for an indexed access.
  *  \param [ref] [index]
@@ -503,7 +519,7 @@ static modelica_integer getDerWithStateK(const unsigned int *index, const unsign
  *  \param [out] [StatesInDer]  index of states in each derivative
  *
  */
-static modelica_integer getStatesInDer(const unsigned int* index, const unsigned int* leadindex, const uinteger ROWS, const uinteger STATES, uinteger** StatesInDer)
+static modelica_integer OMgetStatesInDer(const unsigned int* index, const unsigned int* leadindex, const uinteger ROWS, const uinteger STATES, uinteger** StatesInDer)
 {
   uinteger i = 0, k = 0; /* loop var */
   uinteger numDer = 0;
@@ -522,7 +538,7 @@ static modelica_integer getStatesInDer(const unsigned int* index, const unsigned
   /*    Ask for all states in which derivative they occur. */
   for (k = 0; k < STATES; k++)
   {
-    getDerWithStateK(index, leadindex, der, &numDer, k);
+    OMgetDerWithStateK(index, leadindex, der, &numDer, k);
     for (i = 0; i < ROWS; i++)
     {
       if (der[i] < 0)
@@ -530,7 +546,7 @@ static modelica_integer getStatesInDer(const unsigned int* index, const unsigned
       /* stackPointer refers to the next free position for der[i] in StatesInDer */
       StatesInDer[ der[i] ][ stackPointer[ der[i] ] ] = k;
       stackPointer[ der[i] ]++;
-      der[i] = -1;  // clear all
+      der[i] = -1;  /* clear all */
     }
   }
 
@@ -546,7 +562,7 @@ static modelica_integer getStatesInDer(const unsigned int* index, const unsigned
  *  \param [in] [size]  Number of states.
  *  \return  Index of the state which will change first.
  */
-static uinteger minStep(const modelica_real* tqp, const uinteger size )
+static uinteger OMminStep(const modelica_real* tqp, const uinteger size )
 {
   uinteger i = 0;
   uinteger ind = i;

@@ -131,6 +131,7 @@ enum SOLVER_METHOD
   S_HEUN,          /* 13 */
   S_LIQSS,         /* 14 */
   S_QSS,           /* 15 */
+  S_OMQSS,         /* 16 */
   S_MAX
 };
 
