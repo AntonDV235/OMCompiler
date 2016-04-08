@@ -38,20 +38,32 @@
 #include "util/omc_error.h"
 #include "simulation/options.h"
 
-
 /*! enum error_msg
  * \brief  Returnvalues of the functions in this file
  */
-enum error_msg
+enum qss_error_msg
 {
-  ISNAN = -3L,      /*!< Time of next change is #QNAN. */
-  UNKNOWN = -2L,    /*!< Unspecific error. */
-  OO_MEMORY = -1L,  /*!< Allocation of memory fails. */
-  OK = 0L           /*!< Everything is fine. */
+  QISNAN = -3L,      /*!< Time of next change is #QNAN. */
+  QUNKNOWN = -2L,    /*!< Unspecific error. */
+  QOO_MEMORY = -1L,  /*!< Allocation of memory fails. */
+  QOK = 0L           /*!< Everything is fine. */
 };
 
-const modelica_real EPS = 1e-15;
-const modelica_real deltaQFactor =0.0001;
+
+const modelica_real QSS_EPS = 1e-15;
+const modelica_real deltaQFactor =1;
+
+// Defining boolean in C
+
+#define bool int
+#define true 1
+#define false 0
+
+// Adding an iteration limit
+
+const bool ITERATION_LIMIT1 = false;
+const uinteger ITERATION_LIMIT_VALUE1 = 1500;
+bool LIMIT1 = false;
 
 
 /* Needed if we want to write all the variables into a file*/
@@ -88,7 +100,7 @@ modelica_integer prefixedName_performQSSSimulation(DATA* data, threadData_t *thr
   if (data->callback->initialAnalyticJacobianA(data, threadData))
   {
     infoStreamPrint(LOG_STDOUT, 0, "Jacobian or sparse pattern is not generated or failed to initialize.");
-    return UNKNOWN;
+    return QUNKNOWN;
   }
   //printSparseStructure(data, LOG_SOLVER);
 
@@ -225,7 +237,7 @@ printf("\tintegratorSteps: %d\n", solverInfo->integratorSteps);
 
 
   if (fail)
-    return OO_MEMORY;
+    return QOO_MEMORY;
   /* end - allocate memory */
 
   /* further initialization of local variables */
@@ -244,7 +256,7 @@ printf("\tintegratorSteps: %d\n", solverInfo->integratorSteps);
     //printf("antonDer[i]: %f\n", antonDer);
 
     retValue = deltaQ(data, dQ[i], i, &dTnextQ, &nextQ, &diffQ);
-    if (OK != retValue)
+    if (QOK != retValue)
       return retValue;
     //printf("dTnextQ: %f\n", dTnextQ);
     //printf("nextQ: %f\n", nextQ);
@@ -256,7 +268,7 @@ printf("\tintegratorSteps: %d\n", solverInfo->integratorSteps);
 /* Transform the sparsity pattern into a data structure for an index based access. */
   modelica_integer* der = (modelica_integer*)calloc(ROWS, sizeof(modelica_integer));
   if (NULL==der)
-    return OO_MEMORY;
+    return QOO_MEMORY;
   for (i = 0; i < ROWS; i++)
     der[i] = -1;
 
@@ -302,9 +314,12 @@ printf("\tintegratorSteps: %d\n", solverInfo->integratorSteps);
   //ek gaan net een of twee iterasies doen om te verstaan wat hier aangaan.
   //int antonInt=0;
   //while(antonInt<4)
-  while(solverInfo->currentTime < simInfo->stopTime)
+  while(solverInfo->currentTime < simInfo->stopTime && !LIMIT1)
   {
     modelica_boolean syncStep = 0;
+    if(ITERATION_LIMIT1)
+        		if(currStepNo == ITERATION_LIMIT_VALUE1 - 1)
+        			LIMIT1 = true;
     //antonInt++;
     //printf("\tlastdesiredStep: %f\n", solverInfo->lastdesiredStep);
     //printf("\tstateEvents: %d\n", solverInfo->stateEvents);
@@ -347,7 +362,7 @@ printf("\tintegratorSteps: %d\n", solverInfo->integratorSteps);
 #ifdef D
       fprintf(fid,"Exit caused by #QNAN!\tind=%d",ind);
 #endif
-      return ISNAN;
+      return QISNAN;
     }
     if (isinf(tqp[ind]))
     {
@@ -377,7 +392,7 @@ printf("\tintegratorSteps: %d\n", solverInfo->integratorSteps);
 
     /* the state[ind] will change again in dTnextQ*/
     retValue = deltaQ(data, dQ[ind], ind, &dTnextQ, &nextQ, &diffQ);
-    if (OK != retValue)
+    if (QOK != retValue)
       return retValue;
     tqp[ind] = tq[ind] + dTnextQ;
     nQh[ind] = nextQ;
@@ -474,7 +489,7 @@ printf("\tintegratorSteps: %d\n", solverInfo->integratorSteps);
     {
        j = der[k];
       retValue = deltaQ(data, dQ[j], j, &dTnextQ, &nextQ, &diffQ);
-      if (OK != retValue)
+      if (QOK != retValue)
         return retValue;
       tqp[j] = solverInfo->currentTime + dTnextQ;
       nQh[j] = nextQ;
@@ -597,20 +612,20 @@ static modelica_integer deltaQ( DATA* data, const modelica_real dQ, const modeli
   if (stateDer[index] >= 0 )    /* quantity of the state will increase */
   {
     *nextQ = (floor( sDataOld->realVars[index] / dQ ) + 1 ) * dQ;
-    if (*nextQ <= (sDataOld->realVars[index] + EPS))
+    if (*nextQ <= (sDataOld->realVars[index] + QSS_EPS))
       *nextQ = *nextQ + dQ;
   }
   else
   {
     *nextQ = floor( sDataOld->realVars[index] / dQ ) * dQ;
-    if (*nextQ >= (sDataOld->realVars[index] - EPS ))
+    if (*nextQ >= (sDataOld->realVars[index] - QSS_EPS ))
       *nextQ = *nextQ - dQ;
   }
 
   *diffQ = fabs(*nextQ - sDataOld->realVars[index]);
   *dTnextQ = fabs(*diffQ / stateDer[index]);
 
-  return OK;
+  return QOK;
 }
 
 /*! static int getDerWithStateK(const unsigned int *index, const unsigned int* leadindex, int* der, unsigned int* numDer, const unsigned int k)
@@ -639,7 +654,7 @@ static modelica_integer getDerWithStateK(const unsigned int *index, const unsign
     j++;
   }
   *numDer = j;
-  return OK;
+  return QOK;
 }
 /*! static int getStatesInDer(const unsigned int* index, const unsigned int* leadindex, const unsigned int ROWS, const unsigned int STATES, unsigned int** StatesInDer)
  *  \brief  Return the indices of all states in each derivative for an indexed access.
@@ -658,7 +673,7 @@ static modelica_integer getStatesInDer(const unsigned int* index, const unsigned
   uinteger* stackPointer = (uinteger*)calloc(ROWS, sizeof(uinteger));
 
   if (NULL == der)
-    return OO_MEMORY;
+    return QOO_MEMORY;
 
   for (i = 0; i < ROWS; i++)
     der[i] = -1;
@@ -683,7 +698,7 @@ static modelica_integer getStatesInDer(const unsigned int* index, const unsigned
 
   free(der);
   free(stackPointer);
-  return OK;
+  return QOK;
 }
 
 

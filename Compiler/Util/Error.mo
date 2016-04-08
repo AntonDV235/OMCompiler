@@ -830,7 +830,7 @@ public constant Message INVALID_CLOCK_EQUATION = MESSAGE(569, TRANSLATION(), ERR
 public constant Message SUBCLOCK_CONFLICT = MESSAGE(570, TRANSLATION(), ERROR(),
   Util.gettext("Partition has different sub-clock %ss (%s) and (%s)."));
 public constant Message CLOCK_CONFLICT = MESSAGE(571, TRANSLATION(), ERROR(),
-  Util.gettext("Partition has different base clocks."));
+  Util.gettext("Partitions have different base clocks."));
 public constant Message EXEC_STAT = MESSAGE(572, TRANSLATION(), NOTIFICATION(),
   Util.gettext("Performance of %s: time %s/%s"));
 public constant Message EXEC_STAT_GC = MESSAGE(573, TRANSLATION(), NOTIFICATION(),
@@ -903,6 +903,10 @@ public constant Message META_EMPTY_CALL_PATTERN = MESSAGE(5035, TRANSLATION(), N
   Util.gettext("Removing empty call named pattern argument: %s."));
 public constant Message META_ALL_EMPTY = MESSAGE(5036, TRANSLATION(), NOTIFICATION(),
   Util.gettext("All patterns in call were empty: %s."));
+public constant Message DUPLICATE_DEFINITION = MESSAGE(5037, TRANSLATION(), ERROR(),
+  Util.gettext("The same variable is being defined twice: %s."));
+public constant Message PATTERN_VAR_NOT_VARIABLE = MESSAGE(5038, TRANSLATION(), ERROR(),
+  Util.gettext("Identifiers need to point to local or output variables. Variable %s is %s."));
 
 public constant Message COMPILER_ERROR = MESSAGE(5999, TRANSLATION(), ERROR(),
   Util.notrans("%s"));
@@ -931,13 +935,15 @@ public constant Message FILE_NOT_FOUND_ERROR = MESSAGE(7007, SCRIPTING(), ERROR(
 public constant Message UNKNOWN_FMU_VERSION = MESSAGE(7008, SCRIPTING(), ERROR(),
   Util.gettext("Unknown FMU version %s. Only version 1.0 & 2.0 are supported."));
 public constant Message UNKNOWN_FMU_TYPE = MESSAGE(7009, SCRIPTING(), ERROR(),
-  Util.gettext("Unknown FMU type %s. Supported types are me (model exchange) & cs (co-simulation)."));
+  Util.gettext("Unknown FMU type %s. Supported types are me (model exchange), cs (co-simulation) & me_cs (model exchange & co-simulation)."));
+public constant Message FMU_EXPORT_NOT_SUPPORTED = MESSAGE(7010, SCRIPTING(), ERROR(),
+  Util.gettext("Export of FMU type %s for version %s is not supported. Supported combinations are me (model exchange) for versions 1.0 & 2.0, cs (co-simulation) & me_cs (model exchange & co-simulation) for version 2.0."));
 // FIGARO_ERROR added by Alexander Carlqvist
-public constant Message FIGARO_ERROR = MESSAGE(7010, SCRIPTING(), ERROR(),
+public constant Message FIGARO_ERROR = MESSAGE(7011, SCRIPTING(), ERROR(),
   Util.notrans("Figaro: %s."));
-public constant Message SUSAN_NOTIFY = MESSAGE(7011, TRANSLATION(), NOTIFICATION(),
+public constant Message SUSAN_NOTIFY = MESSAGE(7012, TRANSLATION(), NOTIFICATION(),
   Util.notrans("%s"));
-public constant Message PDEModelica_ERROR = MESSAGE(7012, TRANSLATION(), ERROR(),
+public constant Message PDEModelica_ERROR = MESSAGE(7013, TRANSLATION(), ERROR(),
   Util.gettext("PDEModelica: %s"));
 
 protected import ErrorExt;

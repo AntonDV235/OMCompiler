@@ -54,6 +54,7 @@ import GC;
 import Graph;
 import List;
 import Mod;
+import Patternm;
 import SCode;
 
 public
@@ -1147,7 +1148,9 @@ function findLiteralsHelper
 algorithm
   exp := inExp;
   tpl := inTpl;
-  (exp, tpl) := Expression.traverseExpBottomUp(exp, replaceLiteralExp, tpl);
+  (exp, tpl) := Expression.traverseExpBottomUp(exp,
+    function Patternm.traverseConstantPatternsHelper(func=replaceLiteralExp),
+    tpl);
   (exp, tpl) := Expression.traverseExpTopDown(exp, replaceLiteralArrayExp, tpl);
 end findLiteralsHelper;
 
@@ -2145,15 +2148,20 @@ algorithm
       then (if System.os()=="Windows_NT" then {"-lfmilib","-lshlwapi"} else {"-lfmilib"},{});
 
     case Absyn.STRING(str)
-      equation
+      algorithm
+        if System.os()=="Windows_NT" and str=="ModelicaStandardTables" then
+          (strs,names) := getLibraryStringInGccFormat(Absyn.STRING("ModelicaMatIO"));
+        else
+          strs := {};
+          names := {};
+        end if;
         // If the string is a file, return it as it is
         // If the string starts with a -, it's probably -l or -L gcc flags
         if System.regularFileExists(str) or "-" == stringGetStringChar(str, 1) then
-          strs = {str};
-          names = {};
+          strs := str::strs;
         else
-          strs = {"-l" + str};
-          names = {str};
+          strs := ("-l" + str)::strs;
+          names := str::names;
         end if;
 
       then (strs,names);

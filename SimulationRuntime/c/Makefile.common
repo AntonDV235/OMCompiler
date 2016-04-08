@@ -63,8 +63,9 @@ RUNTIMESIMSOLVER_HEADERS = ./simulation/solver/delay.h \
 ./simulation/solver/nonlinearSolverHybrd.h \
 ./simulation/solver/stateset.h \
 ./simulation/solver/perform_simulation.c \
-./simulation/solver/qss.c \
 ./simulation/solver/liqss.c \
+./simulation/solver/qss.c \
+./simulation/solver/perform_qss_simulation.c \
 ./simulation/solver/dassl.h \
 ./simulation/solver/omc_math.h \
 ./simulation/solver/events.h \

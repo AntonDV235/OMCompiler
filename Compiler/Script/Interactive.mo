@@ -98,6 +98,7 @@ protected import Types;
 protected import UnitAbsyn;
 protected import Util;
 protected import ValuesUtil;
+import MetaModelica.Dangerous;
 
 protected uniontype AnnotationType
   record ICON_ANNOTATION end ICON_ANNOTATION;
@@ -562,26 +563,14 @@ protected function evaluateForStmt
   input list<Absyn.AlgorithmItem> algItemList;
   input GlobalScript.SymbolTable inSymbolTable;
   output GlobalScript.SymbolTable outSymbolTable;
+protected GlobalScript.SymbolTable st = inSymbolTable;
 algorithm
-  outSymbolTable:=
-  match (iter,valList,algItemList, inSymbolTable)
-    local
-      Values.Value val;
-      list<Values.Value> vallst;
-      list<Absyn.AlgorithmItem> algItems;
-      GlobalScript.SymbolTable st1,st2,st3,st4,st5;
-    case (_, val::vallst, algItems, st1)
-    equation
-      st2 = GlobalScriptUtil.appendVarToSymboltable(iter, val, Types.typeOfValue(val), st1);
-      st3 = evaluateAlgStmtLst(algItems, st2);
-      st4 = GlobalScriptUtil.deleteVarFromSymboltable(iter, st3);
-      st5 = evaluateForStmt(iter, vallst, algItems, st4);
-    then
-      st5;
-    case (_, {}, _, st1)
-    then
-      st1;
-  end match;
+  for val in valList loop
+    st := GlobalScriptUtil.appendVarToSymboltable(iter, val, Types.typeOfValue(val), st);
+    st := evaluateAlgStmtLst(algItemList, st);
+    st := GlobalScriptUtil.deleteVarFromSymboltable(iter, st);
+  end for;
+  outSymbolTable := st;
 end evaluateForStmt;
 
 protected function evaluateForStmtRangeOpt
@@ -745,21 +734,13 @@ protected function evaluateAlgStmtLst
   input list<Absyn.AlgorithmItem> inAbsynAlgorithmItemLst;
   input GlobalScript.SymbolTable inSymbolTable;
   output GlobalScript.SymbolTable outSymbolTable;
+protected
+  GlobalScript.SymbolTable st = inSymbolTable;
 algorithm
-  outSymbolTable:=
-  match (inAbsynAlgorithmItemLst,inSymbolTable)
-    local
-      GlobalScript.SymbolTable st,st_1,st_2;
-      Absyn.AlgorithmItem algitem;
-      list<Absyn.AlgorithmItem> algrest;
-    case ({},st) then st;
-    case ((algitem :: algrest),st)
-      equation
-        (_,st_1) = evaluateAlgStmt(algitem, st);
-        st_2 = evaluateAlgStmtLst(algrest, st_1);
-      then
-        st_2;
-  end match;
+  for algitem in inAbsynAlgorithmItemLst loop
+    (_,st) := evaluateAlgStmt(algitem, st);
+  end for;
+  outSymbolTable := st;
 end evaluateAlgStmtLst;
 
 protected function evaluateExpr
@@ -914,26 +895,19 @@ public function getTypeOfVariable
   input Absyn.Ident inIdent;
   input list<GlobalScript.Variable> inVariableLst;
   output DAE.Type outType;
+protected
+  String id;
+  DAE.Type tp;
 algorithm
-  outType := matchcontinue (inIdent,inVariableLst)
-    local
-      String id,varid;
-      DAE.Type tp;
-      list<GlobalScript.Variable> rest;
-
-    case (_,{}) then fail();
-    case (varid,(GlobalScript.IVAR(varIdent = id,type_ = tp) :: _))
-      equation
-        true = stringEq(varid, id);
-      then
-        tp;
-    case (varid,(GlobalScript.IVAR(varIdent = id) :: rest))
-      equation
-        false = stringEq(varid, id);
-        tp = getTypeOfVariable(varid, rest);
-      then
-        tp;
-  end matchcontinue;
+  for var in inVariableLst loop
+    GlobalScript.IVAR(varIdent = id,type_ = tp) := var;
+    if stringEq(inIdent, id) then
+      outType := tp;
+      return;
+    end if;
+  end for;
+  // did not find a type
+  fail();
 end getTypeOfVariable;
 
 protected function getApiFunctionNameInfo
@@ -2792,21 +2766,16 @@ protected function renameComponentInIterators
   input Absyn.ComponentRef newComp;
   output Absyn.ForIterators iteratorsRenamed;
 algorithm
-  iteratorsRenamed := match(iterators, oldComp, newComp)
-    local
-      Absyn.ForIterators rest, restNew;
-      Absyn.Exp exp, expNew; String i;
-    case ({}, _, _) then {};
-    case (Absyn.ITERATOR(i, NONE(), SOME(exp))::rest, _, _)
-      equation
-        expNew = renameComponentInExp(exp, oldComp, newComp);
-        restNew = renameComponentInIterators(rest, oldComp, newComp);
-      then Absyn.ITERATOR(i, NONE(), SOME(expNew))::restNew;
-    case (Absyn.ITERATOR(i, NONE(), NONE())::rest, _, _)
-      equation
-        restNew = renameComponentInIterators(rest, oldComp, newComp);
-      then Absyn.ITERATOR(i, NONE(), NONE())::restNew;
-  end match;
+  iteratorsRenamed := list(match (it)
+      local
+        Absyn.Exp exp; String i;
+      case (Absyn.ITERATOR(i, NONE(), SOME(exp)))
+        equation
+          exp = renameComponentInExp(exp, oldComp, newComp);
+        then Absyn.ITERATOR(i, NONE(), SOME(exp));
+      case (Absyn.ITERATOR(i, NONE(), NONE()))
+        then Absyn.ITERATOR(i, NONE(), NONE());
+    end match for it in iterators);
 end renameComponentInIterators;
 
 protected function renameComponentInNamedArgs
@@ -9171,7 +9140,7 @@ algorithm
   outProgram := updateProgram(Absyn.PROGRAM({cls}, class_within), inProgram);
 end addClassAnnotation;
 
-protected function addClassAnnotationToClass
+public function addClassAnnotationToClass
   "Adds an annotation to a given class."
   input Absyn.Class inClass;
   input Absyn.Annotation inAnnotation;
@@ -12108,12 +12077,12 @@ end getExperimentAnnotationString2;
 
 public function getDocumentationAnnotationString
   input Option<Absyn.Modification> mod;
-  output tuple<String,String> docStr;
+  output tuple<String,String,String> docStr;
 algorithm
   docStr := match (mod)
     local
       list<Absyn.ElementArg> arglst;
-      String info, revisions;
+      String info, revisions, infoHeader;
       Boolean partialInst;
     case (SOME(Absyn.CLASSMOD(elementArgLst = arglst)))
       equation
@@ -12121,8 +12090,9 @@ algorithm
         System.setPartialInstantiation(true);
         info = getDocumentationAnnotationInfo(arglst);
         revisions = getDocumentationAnnotationRevision(arglst);
+        infoHeader = getDocumentationAnnotationInfoHeader(arglst);
         System.setPartialInstantiation(partialInst);
-      then ((info,revisions));
+      then ((info,revisions,infoHeader));
   end match;
 end getDocumentationAnnotationString;
 
@@ -12178,6 +12148,32 @@ algorithm
       then ss;
     end matchcontinue;
 end getDocumentationAnnotationRevision;
+
+protected function getDocumentationAnnotationInfoHeader
+"Helper function to getDocumentationAnnotationString"
+  input list<Absyn.ElementArg> eltArgs;
+  output String str;
+algorithm
+  str := matchcontinue (eltArgs)
+    local
+      Absyn.Exp exp;
+      list<Absyn.ElementArg> xs;
+      String s;
+      String ss;
+      DAE.Exp dexp;
+    case ({}) then "";
+    case (Absyn.MODIFICATION(path = Absyn.IDENT(name = "__OpenModelica_infoHeader"),
+          modification=SOME(Absyn.CLASSMOD(eqMod=Absyn.EQMOD(exp=exp))))::_)
+      equation
+        (_,dexp,_) = StaticScript.elabGraphicsExp(FCore.emptyCache(), FGraph.empty(), exp, true, Prefix.NOPRE(), Absyn.dummyInfo);
+        (DAE.SCONST(s),_) = ExpressionSimplify.simplify(dexp);
+      then s;
+    case (_::xs)
+      equation
+        ss = getDocumentationAnnotationInfoHeader(xs);
+      then ss;
+    end matchcontinue;
+end getDocumentationAnnotationInfoHeader;
 
 protected function getNthPublicConnectorStr
 "Helper function to getNthConnector."
@@ -15820,26 +15816,27 @@ protected function annotationListToAbsyn
   for instance {annotation = Placement( ...) } is converted to ANNOTATION(Placement(...))"
   input list<Absyn.NamedArg> inAbsynNamedArgLst;
   output Absyn.Annotation outAnnotation;
+protected
+  list<Absyn.ElementArg> args={};
 algorithm
-  outAnnotation := matchcontinue (inAbsynNamedArgLst)
-    local
-      Absyn.ElementArg eltarg;
-      Absyn.Exp e;
-      Absyn.Annotation annres;
-      Absyn.NamedArg a;
-      list<Absyn.NamedArg> al;
-    case ({}) then Absyn.ANNOTATION({});
-    case ((Absyn.NAMEDARG(argName = "annotate",argValue = e) :: _))
-      equation
-        eltarg = recordConstructorToModification(e);
-      then
-        Absyn.ANNOTATION({eltarg});
-    case ((_ :: al))
-      equation
-        annres = annotationListToAbsyn(al);
-      then
-        annres;
-  end matchcontinue;
+  for arg in inAbsynNamedArgLst loop
+    args := match arg
+      local
+        Absyn.ElementArg eltarg;
+        Absyn.Exp e;
+        Absyn.Annotation annres;
+        Absyn.NamedArg a;
+        list<Absyn.NamedArg> al;
+        String name;
+      case Absyn.NAMEDARG(argName = "annotate",argValue = e)
+        equation
+          eltarg = recordConstructorToModification(e);
+        then eltarg::args;
+      case Absyn.NAMEDARG(argName = "comment") then args;
+      else args;
+    end match;
+  end for;
+  outAnnotation := Absyn.ANNOTATION(Dangerous.listReverseInPlace(args));
 end annotationListToAbsyn;
 
 protected function recordConstructorToModification

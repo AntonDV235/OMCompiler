@@ -84,15 +84,15 @@ void updateDiscreteSystem(DATA *data, threadData_t *threadData)
   {
     if(data->simulationInfo->needToIterate) {
       debugStreamPrint(LOG_EVENTS_V, 0, "reinit() call. Iteration needed!");
-      printf("reinit() call. Iteration needed!\n");
+      //printf("reinit() call. Iteration needed!\n");
     }
     if(relationChanged) {
       debugStreamPrint(LOG_EVENTS_V, 0, "relations changed. Iteration needed.");
-      printf("relations changed. Iteration needed.\n");
+      //printf("relations changed. Iteration needed.\n");
     }
     if(discreteChanged) {
       debugStreamPrint(LOG_EVENTS_V, 0, "discrete Variable changed. Iteration needed.");
-      printf("discrete Variable changed. Iteration needed.\n");
+      //printf("discrete Variable changed. Iteration needed.\n");
     }
 
     storePreValues(data);
@@ -131,6 +131,9 @@ void saveZeroCrossings(DATA* data, threadData_t *threadData)
   long i = 0;
 
   debugStreamPrint(LOG_ZEROCROSSINGS, 0, "save all zero-crossings");
+
+  //printf("In saveZeroCrossings\n");
+  //printf("Number of zero crossings: %d\n", data->modelData->nZeroCrossings);
 
   for(i=0;i<data->modelData->nZeroCrossings;i++)
     data->simulationInfo->zeroCrossingsPre[i] = data->simulationInfo->zeroCrossings[i];
@@ -1350,7 +1353,7 @@ const char *context_string[CONTEXT_MAX] = {
 void setContext(DATA* data, double* currentTime, int currentContext){
   data->simulationInfo->currentContextOld =  data->simulationInfo->currentContext;
   data->simulationInfo->currentContext =  currentContext;
-  infoStreamPrint(LOG_SOLVER, 0, "+++ Set context %s +++ at time %f", context_string[data->simulationInfo->currentContext], *currentTime);
+  infoStreamPrint(LOG_SOLVER_CONTEXT, 0, "+++ Set context %s +++ at time %f", context_string[data->simulationInfo->currentContext], *currentTime);
   if (currentContext == CONTEXT_JACOBIAN){
     data->simulationInfo->currentJacobianEval = 0;
   }
@@ -1365,7 +1368,7 @@ void setContext(DATA* data, double* currentTime, int currentContext){
 void increaseJacContext(DATA* data){
   if (data->simulationInfo->currentContext == CONTEXT_JACOBIAN){
     data->simulationInfo->currentJacobianEval++;
-    infoStreamPrint(LOG_SOLVER, 0, "+++ Increase Jacobian column context %s +++ to %d", context_string[data->simulationInfo->currentContext], data->simulationInfo->currentJacobianEval);
+    infoStreamPrint(LOG_SOLVER_CONTEXT, 0, "+++ Increase Jacobian column context %s +++ to %d", context_string[data->simulationInfo->currentContext], data->simulationInfo->currentJacobianEval);
   }
 }
 
@@ -1376,6 +1379,6 @@ void increaseJacContext(DATA* data){
  * Restores previous context in simulation info object
  */
 void unsetContext(DATA* data){
-  infoStreamPrint(LOG_SOLVER, 0, "--- Unset context %s ---", context_string[data->simulationInfo->currentContext]);
+  infoStreamPrint(LOG_SOLVER_CONTEXT, 0, "--- Unset context %s ---", context_string[data->simulationInfo->currentContext]);
   data->simulationInfo->currentContext =  data->simulationInfo->currentContextOld;
 }

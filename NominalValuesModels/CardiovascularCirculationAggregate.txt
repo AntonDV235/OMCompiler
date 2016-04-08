@@ -1,0 +1,23 @@
+heart.leftheart.atrium.compartment.V, 92.710788
+heart.leftheart.atrium.junction.inductor.flow_in.q, 159.069511
+heart.leftheart.ventricle.compartment.V, 92.275272
+heart.leftheart.ventricle.junction.flow_in.q, 106.862677
+heart.rightheart.atrium.compartment.V, 78.837684
+heart.rightheart.atrium.junction.inductor.flow_in.q, 74.212697
+heart.rightheart.ventricle.compartment.V, 99.631456
+heart.rightheart.ventricle.junction.flow_in.q, 102.557448
+pulmonaryCirculation.arterioles.compartment.V, 52.745408
+pulmonaryCirculation.artery.compartment.V, 88.853045
+pulmonaryCirculation.artery.junction.inductor.flow_in.q, 92.494309
+pulmonaryCirculation.capillaries.compartment.V, 71.917220
+pulmonaryCirculation.vein.compartment.V, 102.895292
+pulmonaryCirculation.vein.junction.inductor.flow_in.q, 68.369657
+pulmonaryCirculation.venules.compartment.V, 123.391266
+systemicCirculation.arterioles.compartment.V, 509.135362
+systemicCirculation.artery.compartment.V, 277.440245
+systemicCirculation.artery.junction.inductor.flow_in.q, 120.618621
+systemicCirculation.capillaries.compartment.V, 525.084874
+systemicCirculation.vein.compartment.V, 2330.505762
+systemicCirculation.vein.junction.inductor.flow_in.q, 28.045885
+systemicCirculation.venules.compartment.V, 694.376326
+

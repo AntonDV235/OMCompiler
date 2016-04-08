@@ -200,7 +200,7 @@ protected
   list<DAE.Constraint> constraints;
   list<DAE.Exp> lits;
   list<SimCode.ClockedPartition> clockedPartitions;
-  list<SimCode.JacobianMatrix> LinearMatrices, SymbolicJacs, SymbolicJacsTemp, SymbolicJacsStateSelect, SymbolicJacsNLS;
+  list<SimCode.JacobianMatrix> LinearMatrices, SymbolicJacs, SymbolicJacsTemp, SymbolicJacsStateSelect, SymbolicJacsStateSelectInternal, SymbolicJacsNLS;
   list<SimCode.SimEqSystem> algorithmAndEquationAsserts;
   list<SimCode.SimEqSystem> allEquations;
   list<SimCode.SimEqSystem> equationsForZeroCrossings;
@@ -340,7 +340,7 @@ algorithm
     end if;
 
     // collect symbolic jacobians from state selection
-    (stateSets, SymbolicJacsStateSelect, numberofLinearSys, numberofNonLinearSys, numberofMixedSys, numberOfJacobians) := indexStateSets(stateSets, {}, numberofLinearSys, numberofNonLinearSys, numberofMixedSys, numberOfJacobians, {});
+    (stateSets, SymbolicJacsStateSelect, SymbolicJacsStateSelectInternal, numberofLinearSys, numberofNonLinearSys, numberofMixedSys, numberOfJacobians) := indexStateSets(stateSets, {}, numberofLinearSys, numberofNonLinearSys, numberofMixedSys, numberOfJacobians, {}, {});
 
     // generate jacobian or linear model matrices
     (LinearMatrices, uniqueEqIndex) := createJacobianLinearCode(symJacs, modelInfo, uniqueEqIndex);
@@ -352,6 +352,7 @@ algorithm
     (_, numberofLinearSys, numberofNonLinearSys, numberofMixedSys, numberOfJacobians, SymbolicJacs) := countandIndexAlgebraicLoops({}, numberofLinearSys, numberofNonLinearSys, numberofMixedSys, numberOfJacobians, LinearMatrices);
 
     jacobianEquations := collectAllJacobianEquations(SymbolicJacsStateSelect, jacobianEquations);
+    SymbolicJacsStateSelect := listAppend(SymbolicJacsStateSelect, SymbolicJacsStateSelectInternal);
     SymbolicJacsNLS := listAppend(SymbolicJacsNLS, SymbolicJacsStateSelect);
     SymbolicJacs := listAppend(SymbolicJacsNLS, SymbolicJacs);
     jacobianSimvars := collectAllJacobianVars(SymbolicJacs, {});
@@ -389,12 +390,12 @@ algorithm
     algebraicEquations := List.filterOnFalse(algebraicEquations, listEmpty);
 
     if Flags.isSet(Flags.EXEC_HASH) then
-      print("*** SimCode -> generate cref2simVar hastable: " + realString(clock()) + "\n");
+      print("*** SimCode -> generate cref2simVar hashtable: " + realString(clock()) + "\n");
     end if;
     (crefToSimVarHT, mixedArrayVars) := createCrefToSimVarHT(modelInfo);
     modelInfo := setMixedArrayVars(mixedArrayVars, modelInfo);
     if Flags.isSet(Flags.EXEC_HASH) then
-      print("*** SimCode -> generate cref2simVar hastable done!: " + realString(clock()) + "\n");
+      print("*** SimCode -> generate cref2simVar hashtable done!: " + realString(clock()) + "\n");
     end if;
 
     backendMapping := setBackendVarMapping(inBackendDAE, crefToSimVarHT, modelInfo, backendMapping);
@@ -3457,14 +3458,16 @@ protected function indexStateSets
   input Integer iNumMixed;
   input Integer iNumJac;
   input list<SimCode.StateSet> inSetsAccum;
+  input list<SimCode.JacobianMatrix> inSymAccumInternal;
   output list<SimCode.StateSet> outSets;
   output list<SimCode.JacobianMatrix> outSymJacs;
+  output list<SimCode.JacobianMatrix> outSymAccumInternal;
   output Integer oNumLin;
   output Integer oNumNonLin;
   output Integer oNumMixed;
   output Integer oNumJac;
 algorithm
-  (outSets, outSymJacs, oNumLin, oNumNonLin, oNumMixed, oNumJac) := match(inSets, inSymJacs, iNumLin, iNumNonLin, iNumMixed, iNumJac, inSetsAccum)
+  (outSets, outSymJacs, outSymAccumInternal, oNumLin, oNumNonLin, oNumMixed, oNumJac) := match(inSets, inSymJacs, iNumLin, iNumNonLin, iNumMixed, iNumJac, inSetsAccum, inSymAccumInternal)
     local
       list<SimCode.StateSet> sets;
       SimCode.StateSet set;
@@ -3477,13 +3480,13 @@ algorithm
       list<DAE.ComponentRef> states;
       list<DAE.ComponentRef> statescandidates;
       DAE.ComponentRef crA;
-    case ({}, _, _, _, _, _, _) then (listReverse(inSetsAccum), listReverse(inSymJacs), iNumLin, iNumNonLin, iNumMixed, iNumJac);
-    case((SimCode.SES_STATESET(index=index, nCandidates=nCandidates, nStates=nStates, states=states, statescandidates=statescandidates, crA=crA, jacobianMatrix=symJac))::sets, _, _, _, _, _, _)
+    case ({}, _, _, _, _, _, _, _) then (listReverse(inSetsAccum), listReverse(inSymJacs), inSymAccumInternal, iNumLin, iNumNonLin, iNumMixed, iNumJac);
+    case((SimCode.SES_STATESET(index=index, nCandidates=nCandidates, nStates=nStates, states=states, statescandidates=statescandidates, crA=crA, jacobianMatrix=symJac))::sets, _, _, _, _, _, _, _)
     equation
       (symJac, numLin, numNonLin, numMixed, numJac, symJacsInternal) = countandIndexAlgebraicLoopsSymJac(symJac, iNumLin, iNumNonLin, iNumMixed, iNumJac);
-      symJacs = listAppend(symJacsInternal, inSymJacs);
-      (outSets, outSymJacs, oNumLin, oNumNonLin, oNumMixed, oNumJac) = indexStateSets(sets, symJac::symJacs, numLin, numNonLin, numMixed, numJac, SimCode.SES_STATESET(index, nCandidates, nStates, states, statescandidates, crA, symJac)::inSetsAccum);
-     then (outSets, outSymJacs, oNumLin, oNumNonLin, oNumMixed, oNumJac);
+      outSymAccumInternal = listAppend(inSymAccumInternal, symJacsInternal);
+      (outSets, outSymJacs, outSymAccumInternal, oNumLin, oNumNonLin, oNumMixed, oNumJac) = indexStateSets(sets, symJac::inSymJacs, numLin, numNonLin, numMixed, numJac, SimCode.SES_STATESET(index, nCandidates, nStates, states, statescandidates, crA, symJac)::inSetsAccum, outSymAccumInternal);
+     then (outSets, outSymJacs, outSymAccumInternal, oNumLin, oNumNonLin, oNumMixed, oNumJac);
   end match;
 end indexStateSets;
 
@@ -6367,7 +6370,7 @@ protected
   list<SimCodeVar.SimVar> mixedArrayVars;
   SimCodeVar.SimVar simvar;
   SimCodeVar.SimVar derivSimvar;
-  Boolean isalias;
+  Boolean isalias, isAlg, isParam, isConst;
   DAE.ComponentRef name;
   Integer len;
 algorithm
@@ -6379,6 +6382,7 @@ algorithm
   simvar := dlowvarToSimvar(dlowVar, SOME(inAliasVars), inVars);
   derivSimvar := derVarFromStateVar(simvar);
   isalias := isAliasVar(simvar);
+
 
   // update HashSet
   outHS := BaseHashSet.add(simvar.name, outHS);
@@ -6401,54 +6405,89 @@ algorithm
   end if;
 
   // figure out in which lists to put it
-  stateVars := List.consOnTrue((not isalias) and
-    (BackendVariable.isStateVar(dlowVar) or BackendVariable.isAlgState(dlowVar)), simvar, stateVars);
-  derivativeVars := List.consOnTrue((not isalias) and
-    (BackendVariable.isStateVar(dlowVar) or BackendVariable.isAlgState(dlowVar)), derivSimvar, derivativeVars);
-  algVars := List.consOnTrue((not isalias) and
-    BackendVariable.isVarNonDiscreteAlg(dlowVar), simvar, algVars);
-  discreteAlgVars := List.consOnTrue((not isalias) and
-    BackendVariable.isVarDiscreteAlg(dlowVar), simvar, discreteAlgVars);
-  intAlgVars := List.consOnTrue((not isalias) and
-    BackendVariable.isVarIntAlg(dlowVar), simvar, intAlgVars);
-  boolAlgVars := List.consOnTrue((not isalias) and
-    BackendVariable.isVarBoolAlg(dlowVar), simvar, boolAlgVars);
-  inputVars := List.consOnTrue((not isalias) and
-    BackendVariable.isVarOnTopLevelAndInputNoDerInput(dlowVar), simvar, inputVars);
-  outputVars := List.consOnTrue((not isalias) and
-    BackendVariable.isVarOnTopLevelAndOutput(dlowVar), simvar, outputVars);
-  paramVars := List.consOnTrue((not isalias) and
-    BackendVariable.isVarParam(dlowVar), simvar, paramVars);
-  intParamVars := List.consOnTrue((not isalias) and
-    BackendVariable.isVarIntParam(dlowVar), simvar, intParamVars);
-  boolParamVars := List.consOnTrue((not isalias) and
-    BackendVariable.isVarBoolParam(dlowVar), simvar, boolParamVars);
-  stringAlgVars := List.consOnTrue((not isalias) and
-    BackendVariable.isVarStringAlg(dlowVar), simvar, stringAlgVars);
-  stringParamVars := List.consOnTrue((not isalias) and
-    BackendVariable.isVarStringParam(dlowVar), simvar, stringParamVars);
-  extObjVars := List.consOnTrue((not isalias) and
-    BackendVariable.isExtObj(dlowVar), simvar, extObjVars);
-  aliasVars := List.consOnTrue( isalias and
-    BackendVariable.isVarNonDiscreteAlg(dlowVar), simvar, aliasVars);
-  intAliasVars := List.consOnTrue( isalias and
-    BackendVariable.isVarIntAlg(dlowVar), simvar, intAliasVars);
-  boolAliasVars := List.consOnTrue( isalias and
-    BackendVariable.isVarBoolAlg(dlowVar), simvar, boolAliasVars);
-  stringAliasVars := List.consOnTrue( isalias and
-    BackendVariable.isVarStringAlg(dlowVar), simvar, stringAliasVars);
-  constVars := List.consOnTrue((not isalias) and
-    BackendVariable.isVarConst(dlowVar), simvar, constVars);
-  intConstVars := List.consOnTrue((not isalias) and
-    BackendVariable.isVarIntConst(dlowVar), simvar, intConstVars);
-  boolConstVars := List.consOnTrue((not isalias) and
-    BackendVariable.isVarBoolConst(dlowVar), simvar, boolConstVars);
-  stringConstVars := List.consOnTrue((not isalias) and
-    BackendVariable.isVarStringConst(dlowVar), simvar, stringConstVars);
-  realOptimizeConstraintsVars := List.consOnTrue((not isalias) and
-    BackendVariable.isRealOptimizeConstraintsVars(dlowVar), simvar, realOptimizeConstraintsVars);
-  realOptimizeFinalConstraintsVars := List.consOnTrue((not isalias) and
-    BackendVariable.isRealOptimizeFinalConstraintsVars(dlowVar), simvar, realOptimizeFinalConstraintsVars);
+  isAlg := BackendVariable.isVarAlg(dlowVar);
+  isParam := BackendVariable.BackendVariable.isParam(dlowVar);
+  isConst := BackendVariable.BackendVariable.isConst(dlowVar);
+
+  // for inputs and outputs we have additional lists
+  if BackendVariable.isVarOnTopLevelAndInputNoDerInput(dlowVar) then
+    inputVars := simvar::inputVars;
+  end if;
+  if BackendVariable.isVarOnTopLevelAndOutput(dlowVar) then
+    outputVars := simvar::outputVars;
+  end if;
+  // check if alias
+  if isalias then
+    if Types.isReal(dlowVar.varType) then
+      aliasVars := simvar::aliasVars;
+    elseif Types.isInteger(dlowVar.varType) or  Types.isEnumeration(dlowVar.varType) then
+      intAliasVars := simvar::intAliasVars;
+    elseif Types.isBoolean(dlowVar.varType) then
+      boolAliasVars := simvar::boolAliasVars;
+    elseif Types.isString(dlowVar.varType) then
+      stringAliasVars := simvar::stringAliasVars;
+    end if;
+  // check for states
+  elseif BackendVariable.isStateVar(dlowVar) or BackendVariable.isAlgState(dlowVar) then
+    stateVars := simvar::stateVars;
+    derivativeVars := derivSimvar::derivativeVars;
+  // check for algebraic varibales
+  elseif isAlg or isParam or isConst then
+    // Real vars
+    if Types.isReal(dlowVar.varType) then
+      if isAlg then
+        if BackendVariable.isVarDiscrete(dlowVar) then
+          discreteAlgVars := simvar::discreteAlgVars;
+        else
+          algVars := simvar::algVars;
+        end if;
+      elseif isParam then
+        paramVars := simvar::paramVars;
+      elseif isConst then
+        constVars := simvar::constVars;
+      end if;
+    // Integer vars
+    elseif Types.isInteger(dlowVar.varType) or  Types.isEnumeration(dlowVar.varType) then
+      if isAlg then
+        intAlgVars := simvar::intAlgVars;
+      elseif isParam then
+        intParamVars := simvar::intParamVars;
+      elseif isConst then
+        intConstVars := simvar::intConstVars;
+      end if;
+    // Boolean vars
+    elseif Types.isBoolean(dlowVar.varType) then
+      if isAlg then
+        boolAlgVars := simvar::boolAlgVars;
+      elseif isParam then
+        boolParamVars := simvar::boolParamVars;
+      elseif isConst then
+        boolConstVars := simvar::boolConstVars;
+      end if;
+    // String vars
+    elseif Types.isString(dlowVar.varType) then
+      if isAlg then
+        stringAlgVars := simvar::stringAlgVars;
+      elseif isParam then
+        stringParamVars := simvar::stringParamVars;
+      elseif isConst then
+        stringConstVars := simvar::stringConstVars;
+      end if;
+    end if;
+  // external objects
+  elseif BackendVariable.isExtObj(dlowVar) then
+    extObjVars := simvar::extObjVars;
+  // optimize constraints
+  elseif BackendVariable.isRealOptimizeConstraintsVars(dlowVar) then
+    realOptimizeConstraintsVars := simvar::realOptimizeConstraintsVars;
+  // optimize final constraints vars
+  elseif BackendVariable.isRealOptimizeFinalConstraintsVars(dlowVar) then
+    realOptimizeFinalConstraintsVars := simvar::realOptimizeFinalConstraintsVars;
+  elseif BackendVariable.isOptInputVar(dlowVar) then
+    algVars := simvar::algVars;
+  else
+    Error.addInternalError("Failed to find the correct SimVar list for Var: " + BackendDump.varString(dlowVar), sourceInfo());
+  end if;
 
   varsOut := SimCodeVar.SIMVARS(stateVars, derivativeVars, algVars, discreteAlgVars, intAlgVars, boolAlgVars, inputVars, outputVars,
     aliasVars, intAliasVars, boolAliasVars, paramVars, intParamVars, boolParamVars,
@@ -10623,7 +10662,8 @@ algorithm
   end matchcontinue;
 end setUpSystMapping;
 
-protected function setBackendVarMapping"sets the varmapping in the backendmapping.
+protected function setBackendVarMapping
+"sets the varmapping in the backendmapping.
 author:Waurich TUD 2014-04"
   input BackendDAE.BackendDAE dae;
   input SimCode.HashTableCrefToSimVar ht;
@@ -10647,16 +10687,26 @@ algorithm
       BackendDAE.IncidenceMatrix m;
       BackendDAE.IncidenceMatrixT mt;
       array<list<SimCodeVar.SimVar>> simVarMapping;
+      SimCode.HashTableCrefToSimVar htStates;
+      Integer size;
     case(_,_,_,_)
       equation
         SimCode.BACKENDMAPPING(m=m,mT=mt,eqMapping=eqMapping,varMapping=varMapping,eqMatch=eqMatch,varMatch=varMatch,eqTree=tree,simVarMapping=simVarMapping) = bmapIn;
-        SimCode.MODELINFO(varInfo=varInfo,vars=allVars) = modelInfo;
         BackendDAE.DAE(eqs=eqs) = dae;
+
+        //get Backend vars and index
         vars = BackendVariable.equationSystemsVarsLst(eqs,{});
         crefs = List.map(vars,BackendVariable.varCref);
-        bVarIdcs = List.intRange(listLength(crefs));
+        size = listLength(crefs);
+        bVarIdcs = List.intRange(size);
         simVars = List.map1(crefs,SimCodeFunctionUtil.get,ht);
-        simVarIdcs = List.map2(simVars,getSimVarIndex,varInfo,allVars);
+
+        // get states and create hash table
+        SimCode.MODELINFO(varInfo=varInfo,vars=allVars) = modelInfo;
+        htStates = List.fold(allVars.stateVars, addSimVarToHashTable, SimCodeFunctionUtil.emptyHashTableSized(size));
+
+        // produce mapping
+        simVarIdcs = List.map2(simVars,getSimVarIndex,varInfo,htStates);
         varMapping = makeVarMapTuple(simVarIdcs,bVarIdcs,{});
         List.fold1(simVars, fillSimVarMapping, simVarMapping, 1);
         //print(stringDelimitList(List.map(crefs,ComponentReference.printComponentRefStr),"\n")+"\n");
@@ -10679,41 +10729,24 @@ algorithm
   oVarIdx := iVarIdx + 1;
 end fillSimVarMapping;
 
-protected function getSimVarIndex"gets the index from a SimVar and calculates the place in the localData array
+protected function getSimVarIndex
+"gets the index from a SimVar and calculates the place in the localData array
 author:Waurich TUD 2014-04"
   input SimCodeVar.SimVar var;
   input SimCode.VarInfo varInfo;
-  input SimCodeVar.SimVars allVars;
+  input SimCode.HashTableCrefToSimVar htStates;
   output Integer idx;
+protected
+  Integer offset;
 algorithm
-  idx := matchcontinue(var,varInfo,allVars)
-    local
-      Boolean isState;
-      Integer i, offset;
-      list<Boolean> bLst;
-      list<SimCodeVar.SimVar> states;
-    case(_,_,_)
-      equation
-      // is stateVar
-      SimCodeVar.SIMVARS(stateVars = states) = allVars;
-      bLst = List.map1(states,compareSimVarName,var);
-      isState = List.fold(bLst,boolOr,false);
-      true = isState;
-      SimCodeVar.SIMVAR(index=i) = var;
-    then
-      i;
-    case(_,_,_)
-      equation
-      // is not a stateVar
-      SimCodeVar.SIMVARS(stateVars = states) = allVars;
-      bLst = List.map1(states,compareSimVarName,var);
-      isState = List.fold(bLst,boolOr,false);
-      false = isState;
-      SimCode.VARINFO(numStateVars=offset) = varInfo;
-      SimCodeVar.SIMVAR(index=i) = var;
-    then
-      i+2*offset;
-  end matchcontinue;
+  try
+    _ := SimCodeFunctionUtil.get(var.name, htStates);
+    idx := var.index;
+  else
+    offset := varInfo.numStateVars;
+    idx := var.index;
+    idx := idx+2*offset;
+  end try;
 end getSimVarIndex;
 
 protected function makeVarMapTuple"builds a tuple for the varMapping. ((simvarindex,backendvarindex))

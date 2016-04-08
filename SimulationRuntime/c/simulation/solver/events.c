@@ -237,9 +237,9 @@ void handleEvents(DATA* data, threadData_t *threadData, LIST* eventLst, double *
 
     if (!data->simulationInfo->chatteringInfo.messageEmitted && data->simulationInfo->chatteringInfo.lastStepsNumStateEvents == data->simulationInfo->chatteringInfo.numEventLimit)
     {
-      printf("binne die eerste if\n");
-      printf("binne die eerste if\n");
-      printf("binne die eerste if\n");
+      //printf("binne die eerste if\n");
+      //printf("binne die eerste if\n");
+      //printf("binne die eerste if\n");
       int numEventLimit = data->simulationInfo->chatteringInfo.numEventLimit;
       int currentIndex = data->simulationInfo->chatteringInfo.currentIndex;
       double t0 = data->simulationInfo->chatteringInfo.lastTimes[(currentIndex+1) % numEventLimit];
