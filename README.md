@@ -13,8 +13,8 @@ Ok, we need to pull the latest changes from OpenModelica's git repo (and sort ou
 #!python
 
 anton@qwerty:~/Distros/OpenModelica/OMCompiler$ git remote -v
-origin	https://antonpdv@bitbucket.org/antonpdv/omcompiler.git (fetch)
-origin	https://antonpdv@bitbucket.org/antonpdv/omcompiler.git (push)
+origin	git@bitbucket.org:HealthQ/hq_openmodelica.git (fetch)
+origin	git@bitbucket.org:HealthQ/hq_openmodelica.git (push)
 upstream	https://openmodelica.org/git-readonly/OMCompiler.git (fetch)
 upstream	https://openmodelica.org/git-readonly/OMCompiler.git (push)
 ```
@@ -27,7 +27,7 @@ You will do something like
 ```
 #!python
 
-git remote add upstream2 https://openmodelica.org/git-readonly/OMCompiler.git
+git remote add upstream2 git@bitbucket.org:HealthQ/hq_openmodelica.git
 ```
 
 
@@ -44,7 +44,7 @@ anton@qwerty:~/Distros/OpenModelica/.git/modules/OMC$ cat config
 	logallrefupdates = true
 	worktree = ../../../OMCompiler
 [remote "origin"]
-	url = https://antonpdv@bitbucket.org/antonpdv/omcompiler.git
+	url = git@bitbucket.org:HealthQ/hq_openmodelica.git
 	fetch = +refs/heads/*:refs/remotes/origin/*
 [branch "master"]
 	remote = upstream
