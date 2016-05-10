@@ -51,7 +51,7 @@ enum qss_error_msg
 
 
 const modelica_real QSS_EPS = 1e-15;
-const modelica_real deltaQFactor =1;
+const modelica_real deltaQFactor =0.001;
 
 // Defining boolean in C
 

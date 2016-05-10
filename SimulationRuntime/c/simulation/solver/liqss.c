@@ -55,7 +55,7 @@ const uinteger LIQSS_Nominal_Count = 22;
 // Debugging a specific state variable. Only logs from that specific state variable is considered.
 // Setting -1 considers all.
 
-const uinteger DEBUG_LIQSS_Value = 17;
+const uinteger DEBUG_LIQSS_Value = -1;
 
 // Debugging flag
 
@@ -86,6 +86,8 @@ static uinteger calculateState(DATA* data, threadData_t *threadData);
  */
 modelica_integer prefixedName_LIQSSSimulation(DATA* data, threadData_t *threadData, SOLVER_INFO* solverInfo){
     TRACE_PUSH
+
+	printf("Inside the LIQSS solver\n");
 
     // This is used for time management
     SIMULATION_INFO *simInfo = data->simulationInfo;
@@ -301,14 +303,15 @@ modelica_integer prefixedName_LIQSSSimulation(DATA* data, threadData_t *threadDa
     			LIMIT = true;
 
 		if(DEBUG_LIQSS){
-			printf("\\***************************************************\\\n");
+			//printf("\\***************************************************\\\n");
 		}
 		currStepNo++;
 
 		updateCountPerVariable[ind]++;
 		//Capping the time increase to dQ[ind] -- To ensure that derivatives of zero do not stop the simulation.
-		if(time[ind]-solverInfo->currentTime>dQ[ind])
-			time[ind]=dQ[ind]+ solverInfo->currentTime;
+
+		//if(time[ind]-solverInfo->currentTime>dQ[ind])
+		//	time[ind]=dQ[ind]+ solverInfo->currentTime;
 
 		//Forcing the minimum time step
 //		if(time[ind] - solverInfo->currentTime < 0.001)
