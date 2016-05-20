@@ -165,6 +165,12 @@ modelica_integer prefixedName_LIQSSSimulation(DATA* data, threadData_t *threadDa
         return LIQSS_OO_MEMORY;
     /* end - allocate memory */
 
+	//Printing all the state variables
+	printf("All the state vars\n");
+	for(i = 0; i < STATES; i++){
+		printf("%s\n", data->modelData->realVarsData[i].info.name);
+	}
+
     // Here we read the nominal values from a text file into the pointer array, yo!
     if(LIQSS_Nominal){
 		int r, line =0;
@@ -202,7 +208,7 @@ modelica_integer prefixedName_LIQSSSimulation(DATA* data, threadData_t *threadDa
     	if(LIQSS_Nominal)
     		dQ[i] = deltaQFactorLIQSS * nominalDeltaValues[i];
     	else
-    		dQ[i] = deltaQFactorLIQSS;
+    		dQ[i] = deltaQFactorLIQSS*3;
     	printf("dQ[i]: %d  %f    %s\n", i, dQ[i], data->modelData->realVarsData[i].info.name);
 		//printf("Nominal[i]: %d  %f    %s\n", i, data->modelData->realVarsData[i].attribute.nominal, data->modelData->realVarsData[i].info.name);
 		printf("Real %s (nominal = %f);\n", data->modelData->realVarsData[i].info.name, data->modelData->realVarsData[i].attribute.nominal);
@@ -718,4 +724,3 @@ static uinteger calculateState(DATA* data, threadData_t *threadData){
 	else
 		return 0;
 }
-
