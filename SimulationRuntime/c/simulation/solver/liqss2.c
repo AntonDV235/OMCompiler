@@ -220,14 +220,14 @@ int prefixedName_LIQSS2Simulation(DATA* data, threadData_t *threadData, SOLVER_I
 		flag4[i] = false;
 		x[i][0] = state[i];
 		x[i][1] = stateDer[i];
-		printf("x[i][0]: %f\n", x[i][0]);
-		printf("x[i][1]: %f\n", x[i][1]);
+		// printf("x[i][0]: %f\n", x[i][0]);
+		// printf("x[i][1]: %f\n", x[i][1]);
 		q[i][0] = state[i];
 		x[i][2] = 0;
 		u0[i] = x[i][1] - q[i][0]*a[i];
 		u1[i] = 2*x[i][2] - q[i][1]*a[i];
-		printf("u0[i]: %f\n", u0[i]);
-		printf("u1[i]: %f\n", u1[i]);
+		// printf("u0[i]: %f\n", u0[i]);
+		// printf("u1[i]: %f\n", u1[i]);
 
 		diffxq[i][1] = q[i][1] - x[i][1];
 		diffxq[i][2] = -x[i][2];
@@ -281,20 +281,21 @@ int prefixedName_LIQSS2Simulation(DATA* data, threadData_t *threadData, SOLVER_I
 	}
 	t=dt;
 	solverInfo->currentTime = t;
-	printf("dt_index: %d\n", dt_index);
-	printf("dt: %f\n", dt);
-	printf("tx[dt_index]: %f\n", tx[dt_index]);
+	// printf("dt_index: %d\n", dt_index);
+	// printf("dt: %f\n", dt);
+	// printf("tx[dt_index]: %f\n", tx[dt_index]);
 
 	//Now we do the integration iteratively
+	printf("Hier is die simulasie\n");
 	while (t < ft){
 		iterations += 1;
-		printf("\nNew iteration\n");
+		printf("\nBeginning of iteration\n");
 		printf("t: %.12f\n", t);
-		printf("tx[dt_index]: %f\n", tx[dt_index]);
+		printf("dt_index: %d\n", dt_index);
 		// printf("t - tx[dt_index]: %f\n", t - tx[dt_index]);
-		printf("x[dt_index][0]: %f\n", x[dt_index][0]);
-		printf("x[dt_index][1]: %f\n", x[dt_index][1]);
-		printf("x[dt_index][2]: %f\n", x[dt_index][2]);
+		//printf("x[dt_index][0]: %f\n", x[dt_index][0]);
+		//printf("x[dt_index][1]: %f\n", x[dt_index][1]);
+		//printf("x[dt_index][2]: %f\n", x[dt_index][2]);
 		elapsed = t - tx[dt_index];
 		printf("Elapsed: %f\n", elapsed);
 		x[dt_index][0] = calcState(x, dt_index, elapsed);
@@ -308,7 +309,9 @@ int prefixedName_LIQSS2Simulation(DATA* data, threadData_t *threadData, SOLVER_I
 		if(lqu[dt_index] < absTolerance){
 			lqu[dt_index] = absTolerance;
 		}
-		printf("lqu[dt_index]: %f\n", lqu[dt_index]);
+
+		// Hier begin QA_updateQuantizedState
+
 		flag3[dt_index] = false;
 		elapsed = t - tq[dt_index];
 		qAux[dt_index] = q[dt_index][0] + elapsed * q[dt_index][1];
@@ -316,6 +319,7 @@ int prefixedName_LIQSS2Simulation(DATA* data, threadData_t *threadData, SOLVER_I
 		elapsed = t - lt[dt_index];
 		ltq[dt_index] = t;
 		u0[dt_index] = u0[dt_index] + elapsed * u1[dt_index];
+
 		if(flag2[dt_index]){
 			lqu[dt_index] = lquOld[dt_index];
 			flag2[dt_index] = false;
@@ -324,7 +328,7 @@ int prefixedName_LIQSS2Simulation(DATA* data, threadData_t *threadData, SOLVER_I
 		else
 			q[dt_index][0] = x[dt_index][0];
 
-		printf("!!q[dt_index][0]: %f\n",q[dt_index][0]);
+		//printf("!!q[dt_index][0]: %f\n",q[dt_index][0]);
 		if(a[dt_index] < -1e-30){
 			if(x[dt_index][2] < 0){
 				dx[dt_index] = a[dt_index] * a[dt_index] * (q[dt_index][0] + lqu[dt_index]) + a[dt_index] * u0[dt_index] + u1[dt_index];
@@ -380,7 +384,9 @@ int prefixedName_LIQSS2Simulation(DATA* data, threadData_t *threadData, SOLVER_I
 		else
 			q[dt_index][1] = x[dt_index][1];
 
-		printf("q[dt_index][1]: %f\n",q[dt_index][1]);
+		// Hier einding QA_updateQuantizedState -- liqss2.c
+
+		//printf("q[dt_index][1]: %f\n",q[dt_index][1]);
 		tq[dt_index] = t;
 
 		if(x[dt_index][2] == 0)
@@ -395,12 +401,15 @@ int prefixedName_LIQSS2Simulation(DATA* data, threadData_t *threadData, SOLVER_I
 				x[j][0] = calcState(x,j,elapsed);
 				tx[j] = t;
 			}
+
+			// Hierdie is FRW_recomputeDerivatives
 			elapsed = t - tq[j];
 			if(elapsed > 0){
 				q[j][0] = calcQState(q,j,elapsed);
-				printf("q[j][0]: %d   %f\n",j,q[j][0]);
+				//printf("q[j][0]: %d   %f\n",j,q[j][0]);
 				tq[j] = t;
 			}
+			// Hier eindig FRW_recomputeDerivatives
 		}
 
 		for(i = 0;i<STATES;i++){
@@ -409,22 +418,14 @@ int prefixedName_LIQSS2Simulation(DATA* data, threadData_t *threadData, SOLVER_I
 			}
 		}
 
-		// for(i = 0;i<STATES;i++){
-		// 	for(j =0;j<order+1;j++){
-		// 		printf("x[i][j]: %d %d   %f\n",i,j,x[i][j]);
-		// 	}
-		// }
 
-		// Calculate all derivatives
-
-		printf("In calcAllDerivatives\n");
 		SIMULATION_DATA *sData = (SIMULATION_DATA*)data->localData[0];
 	    modelica_real* state = sData->realVars;
 	    modelica_real* stateDer = sData->realVars + data->modelData->nStates;
 		uinteger i = 0;
 		for(i = 0; i< data->modelData->nStates; i++){
 			state[i] = q[i][0];
-			printf("state[i]: %d  %f\n",i,state[i]);
+			//printf("state[i]: %d  %f\n",i,state[i]);
 		}
 		sData->timeValue = solverInfo->currentTime;
 		QEvent = LIQSS2_calculateState(data, threadData);
@@ -432,8 +433,8 @@ int prefixedName_LIQSS2Simulation(DATA* data, threadData_t *threadData, SOLVER_I
 		sim_result.emit(&sim_result, data, threadData);
 		for(i = 0; i< data->modelData->nStates; i++){
 			x[i][1] = stateDer[i];
-			printf("x[i][1]: %d  %f\n",i,x[i][1]);
-			printf("sdsdsdds\n");
+			//printf("x[i][1]: %d  %f\n",i,x[i][1]);
+			//printf("sdsdsdds\n");
 		}
 		//modelica_real constant =
 		for(i = 0; i< data->modelData->nStates; i++){
@@ -458,14 +459,14 @@ int prefixedName_LIQSS2Simulation(DATA* data, threadData_t *threadData, SOLVER_I
 				flag4[i] = false;
 				x[i][0] = state[i];
 				x[i][1] = stateDer[i];
-				printf("x[i][0]: %f\n", x[i][0]);
-				printf("x[i][1]: %f\n", x[i][1]);
+				//printf("x[i][0]: %f\n", x[i][0]);
+				//printf("x[i][1]: %f\n", x[i][1]);
 				q[i][0] = state[i];
 				x[i][2] = 0;
 				u0[i] = x[i][1] - q[i][0]*a[i];
 				u1[i] = 2*x[i][2] - q[i][1]*a[i];
-				printf("u0[i]: %f\n", u0[i]);
-				printf("u1[i]: %f\n", u1[i]);
+				//printf("u0[i]: %f\n", u0[i]);
+				//printf("u1[i]: %f\n", u1[i]);
 
 				diffxq[i][1] = q[i][1] - x[i][1];
 				diffxq[i][2] = -x[i][2];
@@ -509,6 +510,8 @@ int prefixedName_LIQSS2Simulation(DATA* data, threadData_t *threadData, SOLVER_I
 			fprintf(fs,"%.12f,%.12f,%.12f,%.12f,%.12f,%.12f,%.12f\n",t,q[dt_index][0],q[dt_index][1],q[dt_index][2],x[dt_index][0],x[dt_index][1],x[dt_index][2]);
 			fclose(fs);
 
+			// Begin of QA_recomputeNextTimes
+
 			modelica_real diffQ = 0, timeaux = 0;
 			for(i = 0; i < STATES; i++){
 				if(ltq[i] == t){
@@ -541,7 +544,7 @@ int prefixedName_LIQSS2Simulation(DATA* data, threadData_t *threadData, SOLVER_I
 						diffxq[i][1] = a[i] * a[i] * q[i][1] + a[i] * u1[i];
 						timeaux = t + minRootPos(diffxq, i, 1);
 						if(timeaux < nTime[i]){
-							flag2[i] = false;
+							flag2[i] = true;
 							nTime[i] = timeaux;
 							lquOld[i] = lqu[i];
 						}
@@ -553,23 +556,26 @@ int prefixedName_LIQSS2Simulation(DATA* data, threadData_t *threadData, SOLVER_I
 						nTime[i] = ft;
 				}
 			}
+			// End of QA_recomputeNextTimes
+
+
 			// for(i = 0;i<STATES;i++){
 			// 	printf("nTime[i]: %d  %.f\n",i,nTime[i]);
 			// }
 
 			t = 1.0 / 0.0;
-			printf("fdf\n");
-			printf("t: %.12f\n",t);
+			//printf("fdf\n");
+			//printf("t: %.12f\n",t);
 			for(i=0;i<STATES;i++){
 				if(nTime[i] < t){
 					t = nTime[i];
 					dt_index = i;
 				}
 			}
-			printf("t: %.12f\n",t);
+			//printf("t: %.12f\n",t);
 			solverInfo->currentTime = t;
-			printf("End of simulation, yo!aaa\n");
-			printf("dt_index: %d\n",dt_index);
+			//printf("End of simulation, yo!aaa\n");
+			//printf("dt_index: %d\n",dt_index);
 		}
 		TRACE_POP
 	}
@@ -650,8 +656,8 @@ static modelica_boolean LIQSS2_calculateState(DATA* data, threadData_t *threadDa
 	data->callback->functionDAE(data, threadData);
 
 	if(data->simulationInfo->needToIterate){
-		printf("needToIterate is een\n");
-		printf("nTI:  %d\n", data->simulationInfo->needToIterate);
+		//printf("needToIterate is een\n");
+		//printf("nTI:  %d\n", data->simulationInfo->needToIterate);
 		return true;
 	}
 	else
@@ -659,8 +665,8 @@ static modelica_boolean LIQSS2_calculateState(DATA* data, threadData_t *threadDa
 }
 
 static modelica_real calcState(modelica_real** x, const uinteger index, const modelica_real dt){
-	printf("In calc state\n");
-	printf("dt %f\n", dt);
+	//printf("In calc state\n");
+	//printf("dt %f\n", dt);
 	return x[index][0] + dt * x[index][1] + dt * dt * x[index][2];
 }
 
@@ -752,9 +758,9 @@ static modelica_real minRootPos(modelica_real** diffxq, const uinteger index, co
 			if(disc < 0)
 				return 1.0 /0.0;
 			else{
-				printf("disc: %.12f\n", disc);
+				//printf("disc: %.12f\n", disc);
 				modelica_real sd = sqrt(disc);
-				printf("sd: %.12f\n", sd);
+				//printf("sd: %.12f\n", sd);
 				modelica_real r1 = (-diffxq[index][1] + sd) / (2 * diffxq[index][2]);
 				if(r1 > 0)
 					mpr = r1;
