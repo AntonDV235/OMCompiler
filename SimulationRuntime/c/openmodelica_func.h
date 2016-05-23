@@ -59,6 +59,8 @@ int (*performSimulation)(DATA* data, threadData_t*, void* solverInfo);
 int (*performQSSSimulation)(DATA* data, threadData_t*, void* solverInfo);
 int (*performQSSSimulationOM)(DATA* data, threadData_t*, void* solverInfo);
 int (*LIQSSSimulation)(DATA* data, threadData_t*, void* solverInfo);
+int (*LIQSS2Simulation)(DATA* data, threadData_t*, void* solverInfo);
+
 void (*updateContinuousSystem)(DATA *data, threadData_t*);
 /* Function for calling external object constructors */
 void (*callExternalObjectConstructors)(DATA *data, threadData_t*);

@@ -863,6 +863,9 @@ template simulationFile(SimCode simCode, String guid, Boolean isModelExchangeFMU
     #define prefixedName_LIQSSSimulation <%symbolName(modelNamePrefixStr,"LIQSSSimulation")%>
     #include <simulation/solver/liqss.c>
 
+    #define prefixedName_LIQSS2Simulation <%symbolName(modelNamePrefixStr,"LIQSS2Simulation")%>
+    #include <simulation/solver/liqss2.c>
+
 	#define prefixedName_performQSSSimulationOM <%symbolName(modelNamePrefixStr,"performQSSSimulationOM")%>
     #include <simulation/solver/perform_qss_simulation.c>
 
@@ -926,6 +929,7 @@ template simulationFile(SimCode simCode, String guid, Boolean isModelExchangeFMU
        <% if isModelExchangeFMU then "NULL" else '(int (*)(DATA *, threadData_t *, void *)) <%symbolName(modelNamePrefixStr,"performQSSSimulation")%>'%>,
 	   <% if isModelExchangeFMU then "NULL" else '(int (*)(DATA *, threadData_t *, void *)) <%symbolName(modelNamePrefixStr,"performQSSSimulationOM")%>'%>,
 	   <% if isModelExchangeFMU then "NULL" else '(int (*)(DATA *, threadData_t *, void *)) <%symbolName(modelNamePrefixStr,"LIQSSSimulation")%>'%>,
+       <% if isModelExchangeFMU then "NULL" else '(int (*)(DATA *, threadData_t *, void *)) <%symbolName(modelNamePrefixStr,"LIQSS2Simulation")%>'%>,
        <% if isModelExchangeFMU then "NULL" else '<%symbolName(modelNamePrefixStr,"updateContinuousSystem")%>'%>,
        <%symbolName(modelNamePrefixStr,"callExternalObjectConstructors")%>,
        <%symbolName(modelNamePrefixStr,"callExternalObjectDestructors")%>,
