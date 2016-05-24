@@ -59,8 +59,8 @@ int prefixedName_LIQSS2Simulation(DATA* data, threadData_t *threadData, SOLVER_I
 	modelica_real dt = 0;
 	int dt_index = 0;
 	modelica_real** x = NULL;
-	const modelica_real tolerance = 0.001;
-	const modelica_real absTolerance = 0.000001;
+	const modelica_real tolerance = 0.000001;
+	const modelica_real absTolerance = 0.000000001;
 	modelica_real* tx = NULL;
 	modelica_real** q = NULL;
 	modelica_real* a = NULL;
@@ -125,14 +125,18 @@ int prefixedName_LIQSS2Simulation(DATA* data, threadData_t *threadData, SOLVER_I
 
 	// A summary of which variables are in which derivatives.
 	uinteger start =0;
+	uinteger jIndex = 0;
 	for(i=0; i<STATES; i++){
 		if(i>0)
 			start = pattern->leadindex[i-1];
 		printf("We are now considering start=%d\n",start);
 		nSD[i] = pattern->leadindex[i] - start;
+		jIndex = 0;
 		for(uinteger j = start; j < pattern->leadindex[i]; j++){
-			printf("\t %d %d\n",j,pattern->index[j]);
-			SD[i][j] = pattern->index[j];
+			printf("\t %d %d\n",jIndex,pattern->index[j]);
+			SD[i][jIndex] = pattern->index[j];
+			printf("\t %d %d %d\n",i,j,SD[i][j]);
+			jIndex++;
 		}
 	}
 
@@ -220,6 +224,8 @@ int prefixedName_LIQSS2Simulation(DATA* data, threadData_t *threadData, SOLVER_I
 		flag4[i] = false;
 		x[i][0] = state[i];
 		x[i][1] = stateDer[i];
+
+
 		// printf("x[i][0]: %f\n", x[i][0]);
 		// printf("x[i][1]: %f\n", x[i][1]);
 		q[i][0] = state[i];
@@ -237,15 +243,17 @@ int prefixedName_LIQSS2Simulation(DATA* data, threadData_t *threadData, SOLVER_I
 
 		diffxq[i][0] = q[i][0] - dq[i] + lqu[i] - x[i][0];
 		mpr1 = minRootPos(diffxq,i,2);
-		printf("mpr1: %f\n", mpr1);
+		//printf("mpr1: %f\n", mpr1);
 		diffxq[i][0] = q[i][0] - dq[i] - lqu[i] - x[i][0];
 		mpr2 = minRootPos(diffxq,i,2);
-		printf("mpr2: %f\n", mpr2);
+		//printf("mpr2: %f\n", mpr2);
 
 		if(mpr1 < mpr2)
 			mpr[i] = mpr1;
 		else
 			mpr[i] = mpr2;
+		if(mpr[i] > ft)
+			mpr[i] = ft;
 	}
 
 	//Create the .csv files
@@ -270,10 +278,11 @@ int prefixedName_LIQSS2Simulation(DATA* data, threadData_t *threadData, SOLVER_I
 		fprintf(fs,"%.12f,%.12f,%.12f,%.12f,%.12f,%.12f,%.12f\n",t,q[i][0],q[i][1],q[i][2],x[i][0],x[i][1],x[i][2]);
 		fclose(fs);
 	}
-
+	printf("\nThe Initialization stage\n");
 	dt = mpr[0];
 	dt_index = 0;
 	for(i=0;i<STATES;i++){
+		printf("nTime[i]:  %d  %.16f\n", i, mpr[i]);
 		if(dt > mpr[i]){
 			dt = mpr[i];
 			dt_index = i;
@@ -290,27 +299,42 @@ int prefixedName_LIQSS2Simulation(DATA* data, threadData_t *threadData, SOLVER_I
 	while (t < ft){
 		iterations += 1;
 		printf("\nBeginning of iteration\n");
-		printf("t: %.12f\n", t);
+		printf("t: %.16f\n", t);
 		printf("dt_index: %d\n", dt_index);
 		// printf("t - tx[dt_index]: %f\n", t - tx[dt_index]);
 		//printf("x[dt_index][0]: %f\n", x[dt_index][0]);
 		//printf("x[dt_index][1]: %f\n", x[dt_index][1]);
 		//printf("x[dt_index][2]: %f\n", x[dt_index][2]);
 		elapsed = t - tx[dt_index];
-		printf("Elapsed: %f\n", elapsed);
+		printf("Elapsed: %.16f\n", elapsed);
 		x[dt_index][0] = calcState(x, dt_index, elapsed);
-		printf("x[dt_index][0]: %f\n", x[dt_index][0]);
+		printf("x[dt_index][0]: %.16f\n", x[dt_index][0]);
 
 		x[dt_index][1] = calcDerivative(x, dt_index, elapsed);
-		printf("x[dt_index][1]: %f\n", x[dt_index][1]);
+		printf("x[dt_index][1]: %.16f\n", x[dt_index][1]);
 
 		tx[dt_index] = t;
 		lqu[dt_index] = fabs(x[dt_index][0]) * tolerance;
 		if(lqu[dt_index] < absTolerance){
 			lqu[dt_index] = absTolerance;
 		}
+		// printf("lqu[dt_index]: %.12f\n",lqu[dt_index]);
+
+		printf("Voor QA_updateQuantizedState\n");
+		for(i = 0;i<STATES;i++){
+			for(j =0;j<order+1;j++){
+				printf("q[i][j]: %d %d   %.16f\n",i,j,q[i][j]);
+			}
+		}
+		printf("\n");
+		for(i = 0;i<STATES;i++){
+			for(j =0;j<order+1;j++){
+				printf("x[i][j]: %d %d   %.16f\n",i,j,x[i][j]);
+			}
+		}
 
 		// Hier begin QA_updateQuantizedState
+		printf("QA_updateQuantizedState\n");
 
 		flag3[dt_index] = false;
 		elapsed = t - tq[dt_index];
@@ -320,6 +344,8 @@ int prefixedName_LIQSS2Simulation(DATA* data, threadData_t *threadData, SOLVER_I
 		ltq[dt_index] = t;
 		u0[dt_index] = u0[dt_index] + elapsed * u1[dt_index];
 
+		// printf("flag2[dt_index] %d\n", flag2[dt_index]);
+
 		if(flag2[dt_index]){
 			lqu[dt_index] = lquOld[dt_index];
 			flag2[dt_index] = false;
@@ -328,7 +354,7 @@ int prefixedName_LIQSS2Simulation(DATA* data, threadData_t *threadData, SOLVER_I
 		else
 			q[dt_index][0] = x[dt_index][0];
 
-		//printf("!!q[dt_index][0]: %f\n",q[dt_index][0]);
+		// printf("!!q[dt_index][0]: %f\n",q[dt_index][0]);
 		if(a[dt_index] < -1e-30){
 			if(x[dt_index][2] < 0){
 				dx[dt_index] = a[dt_index] * a[dt_index] * (q[dt_index][0] + lqu[dt_index]) + a[dt_index] * u0[dt_index] + u1[dt_index];
@@ -368,9 +394,16 @@ int prefixedName_LIQSS2Simulation(DATA* data, threadData_t *threadData, SOLVER_I
 				}
 			}
 		}
-		else
+		else{
 			flag4[dt_index] = false;
+			if(x[dt_index][2] < 0)
+				dq[dt_index] = -lqu[dt_index];
+			else
+				dq[dt_index] = lqu[dt_index];
+		}
 
+
+		// printf("22dq[dt_index]: %f\n",dq[dt_index]);
 		if(fabs(dq[dt_index]) > 2* lqu[dt_index]){
 			if(dq[dt_index] > 0)
 				dq[dt_index] = lqu[dt_index];
@@ -379,26 +412,46 @@ int prefixedName_LIQSS2Simulation(DATA* data, threadData_t *threadData, SOLVER_I
 		}
 
 		q[dt_index][0] = q[dt_index][0] + dq[dt_index];
+		// printf("!!11dq[dt_index]: %f\n",dq[dt_index]);
+		// printf("!!11q[dt_index][0]: %f\n",q[dt_index][0]);
 		if(flag3[dt_index])
 			q[dt_index][1] = a[dt_index] * q[dt_index][0] + u0[dt_index];
 		else
 			q[dt_index][1] = x[dt_index][1];
 
 		// Hier einding QA_updateQuantizedState -- liqss2.c
+		printf("Na QA_updateQuantizedState\n");
+		for(i = 0;i<STATES;i++){
+			for(j =0;j<order+1;j++){
+				printf("q[i][j]: %d %d   %.16f\n",i,j,q[i][j]);
+			}
+		}
+		printf("\n");
+		for(i = 0;i<STATES;i++){
+			for(j =0;j<order+1;j++){
+				printf("x[i][j]: %d %d   %.16f\n",i,j,x[i][j]);
+			}
+		}
+		printf("\n");
 
-		//printf("q[dt_index][1]: %f\n",q[dt_index][1]);
 		tq[dt_index] = t;
 
+		printf("QA_nextTime\n");
+		// Hier begin QA_nextTime -- liqss2.c
 		if(x[dt_index][2] == 0)
 			nTime[dt_index] = 1.0 / 0.0;
 		else
 			nTime[dt_index]  = t + sqrt(fabs(lqu[dt_index] / x[dt_index][2]));
-
+		// Hier eindig QA_nextTime -- liqss2.c
+		printf("After QA_nextTime\n");
 		for(i=0;i<nSD[dt_index];i++){
+
 			j= SD[dt_index][i];
+			printf("j: %d\n", j);
 			elapsed = t - tx[j];
 			if(elapsed > 0){
 				x[j][0] = calcState(x,j,elapsed);
+				printf("x[j][0]: %.16f\n", x[j][0]);
 				tx[j] = t;
 			}
 
@@ -414,7 +467,7 @@ int prefixedName_LIQSS2Simulation(DATA* data, threadData_t *threadData, SOLVER_I
 
 		for(i = 0;i<STATES;i++){
 			for(j =0;j<order+1;j++){
-				printf("q[i][j]: %d %d   %f\n",i,j,q[i][j]);
+				printf("q[i][j]: %d %d   %.16f\n",i,j,q[i][j]);
 			}
 		}
 
@@ -436,15 +489,13 @@ int prefixedName_LIQSS2Simulation(DATA* data, threadData_t *threadData, SOLVER_I
 			//printf("x[i][1]: %d  %f\n",i,x[i][1]);
 			//printf("sdsdsdds\n");
 		}
-		//modelica_real constant =
 		for(i = 0; i< data->modelData->nStates; i++){
 			x[i][2] = ddx(q,i,state);
 		}
 
-		printf("calcAllDerivatives\n");
 		for(i = 0;i<STATES;i++){
 			for(j =0;j<order+1;j++){
-				printf("x[i][j]: %d %d   %f\n",i,j,x[i][j]);
+				printf("x[i][j]: %d %d   %.16f\n",i,j,x[i][j]);
 			}
 		}
 
@@ -476,16 +527,17 @@ int prefixedName_LIQSS2Simulation(DATA* data, threadData_t *threadData, SOLVER_I
 
 				diffxq[i][0] = q[i][0] - dq[i] + lqu[i] - x[i][0];
 				mpr1 = minRootPos(diffxq,i,2);
-				printf("mpr1: %f\n", mpr1);
+				//printf("mpr1: %f\n", mpr1);
 				diffxq[i][0] = q[i][0] - dq[i] - lqu[i] - x[i][0];
 				mpr2 = minRootPos(diffxq,i,2);
-				printf("mpr2: %f\n", mpr2);
+				//printf("mpr2: %f\n", mpr2);
 
 				if(mpr1 < mpr2)
 					mpr[i] = mpr1;
 				else
 					mpr[i] = mpr2;
-
+				if(mpr[i] > ft)
+					mpr[i] = ft;
 				}
 			dt = mpr[0];
 			dt_index = 0;
@@ -499,7 +551,7 @@ int prefixedName_LIQSS2Simulation(DATA* data, threadData_t *threadData, SOLVER_I
 		}
 		else{
 
-			// Need to ADD the CSV writing capabilities HERE!!!
+			// Begin of QA_recomputeNextTimes
 
 			sprintf(buf, "%s%s.csv", "/home/anton/Desktop/Results/", data->modelData->realVarsData[dt_index].info.name);
 			FILE *fs = fopen(buf, "a");
@@ -509,8 +561,6 @@ int prefixedName_LIQSS2Simulation(DATA* data, threadData_t *threadData, SOLVER_I
 			}
 			fprintf(fs,"%.12f,%.12f,%.12f,%.12f,%.12f,%.12f,%.12f\n",t,q[dt_index][0],q[dt_index][1],q[dt_index][2],x[dt_index][0],x[dt_index][1],x[dt_index][2]);
 			fclose(fs);
-
-			// Begin of QA_recomputeNextTimes
 
 			modelica_real diffQ = 0, timeaux = 0;
 			for(i = 0; i < STATES; i++){
@@ -739,9 +789,9 @@ static modelica_real minRootPos(modelica_real** diffxq, const uinteger index, co
 		}
 	}
 	else if(order == 2){
-		printf("diffxq[index][0]: %.12f\n", diffxq[index][0]);
-        printf("diffxq[index][1]: %.12f\n", diffxq[index][1]);
-        printf("diffxq[index][2]: %.12f\n", diffxq[index][2]);
+		//printf("diffxq[index][0]: %.12f\n", diffxq[index][0]);
+        //printf("diffxq[index][1]: %.12f\n", diffxq[index][1]);
+        //printf("diffxq[index][2]: %.12f\n", diffxq[index][2]);
 		if(diffxq[index][2] == 0 || (1000*fabs(diffxq[index][2]) < fabs(diffxq[index][1]))){
 			if(diffxq[index][1] == 0)
 				return 1.0 /0.0;
@@ -770,7 +820,7 @@ static modelica_real minRootPos(modelica_real** diffxq, const uinteger index, co
 				if(r1 > 0 && r1 < mpr){
 					mpr = r1;
 				}
-				printf("mpr: %.12f\n",mpr);
+				//printf("mpr: %.12f\n",mpr);
 				return mpr;
 			}
 		}
