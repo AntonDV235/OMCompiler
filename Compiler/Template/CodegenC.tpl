@@ -864,7 +864,16 @@ template simulationFile(SimCode simCode, String guid, Boolean isModelExchangeFMU
     #include <simulation/solver/liqss.c>
 
     #define prefixedName_LIQSS2Simulation <%symbolName(modelNamePrefixStr,"LIQSS2Simulation")%>
+    #include <simulation/solver/liqss2.h>
+
+    #define prefixedName_LIQSS2Simulation <%symbolName(modelNamePrefixStr,"LIQSS2Simulation")%>
     #include <simulation/solver/liqss2.c>
+
+    #define prefixedName_LIQSS2Simulation <%symbolName(modelNamePrefixStr,"LIQSS2Simulation")%>
+    #include <simulation/solver/liqss2Operations.h>
+
+    #define prefixedName_LIQSS2Simulation <%symbolName(modelNamePrefixStr,"LIQSS2Simulation")%>
+    #include <simulation/solver/liqss2Operations.c>
 
 	#define prefixedName_performQSSSimulationOM <%symbolName(modelNamePrefixStr,"performQSSSimulationOM")%>
     #include <simulation/solver/perform_qss_simulation.c>
