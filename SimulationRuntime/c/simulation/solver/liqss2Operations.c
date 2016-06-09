@@ -249,8 +249,81 @@ static void LIQSS2_recomputeNextTimes(LIQSS2_quantizerState p, modelica_real t, 
     }
 }
 
+static void LIQSS2_printModelData(DATA* data){
+    uinteger i = 0;
+    printf("realVarsData:\n");
+	for(i=0;i< data->modelData->nVariablesReal;i++){
+		printf("%s\n",data->modelData->realVarsData[i].info.name);
+	}
+
+	printf("nVariablesInteger\n");
+	for(i = 0; i < data->modelData->nVariablesInteger; i++){
+		printf("%s\n", data->modelData->integerVarsData[i].info.name);
+	}
+
+	printf("booleanVarsData\n");
+	for(i = 0; i < data->modelData->nVariablesBoolean; i++){
+		printf("%s\n", data->modelData->booleanVarsData[i].info.name);
+	}
+
+	printf("integerVarsData\n");
+	for(i = 0; i < data->modelData->nVariablesInteger; i++){
+		printf("%s\n", data->modelData->integerVarsData[i].info.name);
+	}
+
+	printf("stringVarsData\n");
+	for(i = 0; i < data->modelData->nVariablesString; i++){
+		printf("%s\n", data->modelData->stringVarsData[i].info.name);
+	}
+
+	printf("nParametersInteger\n");
+	for(i = 0; i < data->modelData->nParametersInteger; i++){
+		printf("%s\n", data->modelData->integerParameterData[i].info.name);
+	}
+
+	printf("realParameterData\n");
+	for(i = 0; i < data->modelData->nParametersReal; i++){
+		printf("%s\n", data->modelData->realParameterData[i].info.name);
+	}
+}
 
 
+static void LIQSS_initialiation(LIQSS2_quantizerState p, modelica_real* state, modelica_real* stateDer, const uinteger STATES, modelica_real ft, modelica_real tolerance, modelica_real absTolerance){
+    modelica_real mpr1 = 0;
+    modelica_real mpr2 = 0;
+    uinteger i = 0;
+    for(i=0;i<STATES;i++){
+        p->tx[i] = 0;
+        p->tq[i] = 0;
+        p->ltq[i] = 0;
+        p->lt[i] = 0;
+        p->flag2[i] = false;
+        p->flag3[i] = false;
+        p->flag4[i] = false;
+        p->x[i][0] = state[i];
+        p->x[i][1] = stateDer[i];
+        p->q[i][0] = state[i];
+        p->x[i][2] = 0;
+        p->u0[i] = p->x[i][1] - p->q[i][0] * p->a[i];
+        p->u1[i] = 2*p->x[i][2] - p->q[i][1] * p->a[i];
+        p->diffxq[i][1] = p->q[i][1] - p->x[i][1];
+        p->diffxq[i][2] = -p->x[i][2];
+        p->lqu[i] = p->x[i][0] * tolerance;
+        if(p->lqu[i] < absTolerance)
+            p->lqu[i] = absTolerance;
+        p->diffxq[i][0] = p->q[i][0] - p->dq[i] + p->lqu[i] - p->x[i][0];
+        mpr1 = minRootPos(p->diffxq,i,2);
+        p->diffxq[i][0] = p->q[i][0] - p->dq[i] - p->lqu[i] - p->x[i][0];
+        mpr2 = minRootPos(p->diffxq,i,2);
+
+        if(mpr1 < mpr2)
+            p->mpr[i] = mpr1;
+        else
+            p->mpr[i] = mpr2;
+        if(p->mpr[i] > ft)
+            p->mpr[i] = ft;
+    }
+}
 
 
 static void LIQSS2_updateQuantizedState(LIQSS2_quantizerState p, modelica_real t, int dt_index){
@@ -263,8 +336,6 @@ static void LIQSS2_updateQuantizedState(LIQSS2_quantizerState p, modelica_real t
     p->ltq[dt_index] = t;
     p->u0[dt_index] = p->u0[dt_index] + elapsed * p->u1[dt_index];
 
-    // printf("flag2[dt_index] %d\n", flag2[dt_index]);
-
     if(p->flag2[dt_index]){
         p->lqu[dt_index] = p->lquOld[dt_index];
         p->flag2[dt_index] = false;
@@ -273,53 +344,52 @@ static void LIQSS2_updateQuantizedState(LIQSS2_quantizerState p, modelica_real t
     else
         p->q[dt_index][0] = p->x[dt_index][0];
 
-    // printf("!!q[dt_index][0]: %f\n",q[dt_index][0]);
-    // if(a[dt_index] < -1e-30){
-    // 	if(x[dt_index][2] < 0){
-    // 		dx[dt_index] = a[dt_index] * a[dt_index] * (q[dt_index][0] + lqu[dt_index]) + a[dt_index] * u0[dt_index] + u1[dt_index];
-    // 		if(dx[dt_index] <= 0)
-    // 			dq[dt_index] = lqu[dt_index];
-    // 		else{
-    // 			dq[dt_index] = (-u1[dt_index] / a[dt_index] / a[dt_index]) - (u0[dt_index] / a[dt_index]) - q[dt_index][0];
-    // 			flag3[dt_index] = true;
-    // 			if(fabs(dq[dt_index]) > lqu[dt_index])
-    // 				dq[dt_index] = lqu[dt_index];
-    // 		}
-    // 	}
-    // 	else{
-    // 		dx[dt_index] = a[dt_index] * a[dt_index] * (q[dt_index][0] - lqu[dt_index]) + a[dt_index] * u0[dt_index] + u1[dt_index];
-    // 		if(dx[dt_index] >= 0)
-    // 			dq[dt_index] = -lqu[dt_index];
-    // 		else{
-    // 			dq[dt_index] = (-u1[dt_index] / a[dt_index] / a[dt_index]) - (u0[dt_index] / a[dt_index]) - q[dt_index][0];
-    // 			flag3[dt_index] = true;
-    // 			if(fabs(dq[dt_index]) > lqu[dt_index]){
-    // 				dq[dt_index] = -lqu[dt_index];
-    // 			}
-    // 		}
-    // 	}
-    // 	if(q[dt_index][1] * x[dt_index][1] < 0 && !flag2[dt_index] && !flag3[dt_index] && !flag4[dt_index]){
-    // 		if(q[dt_index][1] < 0)
-    // 			dq[dt_index] = qAux[dt_index] - q[dt_index][0] - fabs(lquOld[dt_index]) * 0.1;
-    // 		else
-    // 			dq[dt_index] = qAux[dt_index] - q[dt_index][0] + fabs(lquOld[dt_index]) * 0.1;
-    // 		flag4[dt_index] = true;
-    // 	}
-    // 	else if (flag4[dt_index]){
-    // 		flag4[dt_index] = false;
-    // 		if(fabs((-u1[dt_index] / a[dt_index] / a[dt_index]) - (u0[dt_index] / a[dt_index]) - q[dt_index][0]) < 3* lqu[dt_index]){
-    // 			dq[dt_index] = (-u1[dt_index] / a[dt_index] / a[dt_index]) - (u0[dt_index] / a[dt_index]) - q[dt_index][0];
-    // 			flag3[dt_index] = true;
-    // 		}
-    // 	}
-    // }
-    // else{
-    // 	flag4[dt_index] = false;
-    // 	if(x[dt_index][2] < 0)
-    // 		dq[dt_index] = -lqu[dt_index];
-    // 	else
-    // 		dq[dt_index] = lqu[dt_index];
-    // }
+    if(p->a[dt_index] < -1e-30){
+    	if(p->x[dt_index][2] < 0){
+    		p->dx[dt_index] = p->a[dt_index] * p->a[dt_index] * (p->q[dt_index][0] + p->lqu[dt_index]) + p->a[dt_index] * p->u0[dt_index] + p->u1[dt_index];
+    		if(p->dx[dt_index] <= 0)
+    			p->dq[dt_index] = p->lqu[dt_index];
+    		else{
+    			p->dq[dt_index] = (-p->u1[dt_index] / p->a[dt_index] / p->a[dt_index]) - (p->u0[dt_index] / p->a[dt_index]) - p->q[dt_index][0];
+    			p->flag3[dt_index] = true;
+    			if(fabs(p->dq[dt_index]) > p->lqu[dt_index])
+    				p->dq[dt_index] = p->lqu[dt_index];
+    		}
+    	}
+    	else{
+    		p->dx[dt_index] = p->a[dt_index] * p->a[dt_index] * (p->q[dt_index][0] - p->lqu[dt_index]) + p->a[dt_index] * p->u0[dt_index] + p->u1[dt_index];
+    		if(p->dx[dt_index] >= 0)
+    			p->dq[dt_index] = -p->lqu[dt_index];
+    		else{
+    			p->dq[dt_index] = (-p->u1[dt_index] / p->a[dt_index] / p->a[dt_index]) - (p->u0[dt_index] / p->a[dt_index]) - p->q[dt_index][0];
+    			p->flag3[dt_index] = true;
+    			if(fabs(p->dq[dt_index]) > p->lqu[dt_index]){
+    				p->dq[dt_index] = -p->lqu[dt_index];
+    			}
+    		}
+    	}
+    	if(p->q[dt_index][1] * p->x[dt_index][1] < 0 && !p->flag2[dt_index] && !p->flag3[dt_index] && !p->flag4[dt_index]){
+    		if(p->q[dt_index][1] < 0)
+    			p->dq[dt_index] = p->qAux[dt_index] - p->q[dt_index][0] - fabs(p->lquOld[dt_index]) * 0.1;
+    		else
+    			p->dq[dt_index] = p->qAux[dt_index] - p->q[dt_index][0] + fabs(p->lquOld[dt_index]) * 0.1;
+    		p->flag4[dt_index] = true;
+    	}
+    	else if (p->flag4[dt_index]){
+    		p->flag4[dt_index] = false;
+    		if(fabs((-p->u1[dt_index] / p->a[dt_index] / p->a[dt_index]) - (p->u0[dt_index] / p->a[dt_index]) - p->q[dt_index][0]) < 3* p->lqu[dt_index]){
+    			p->dq[dt_index] = (-p->u1[dt_index] / p->a[dt_index] / p->a[dt_index]) - (p->u0[dt_index] / p->a[dt_index]) - p->q[dt_index][0];
+    			p->flag3[dt_index] = true;
+    		}
+    	}
+    }
+    else{
+    	p->flag4[dt_index] = false;
+    	if(p->x[dt_index][2] < 0)
+    		p->dq[dt_index] = -p->lqu[dt_index];
+    	else
+    		p->dq[dt_index] = p->lqu[dt_index];
+    }
 
     if(fabs(p->dq[dt_index]) > 2* p->lqu[dt_index]){
         if(p->dq[dt_index] > 0)
@@ -333,4 +403,65 @@ static void LIQSS2_updateQuantizedState(LIQSS2_quantizerState p, modelica_real t
         p->q[dt_index][1] = p->a[dt_index] * p->q[dt_index][0] + p->u0[dt_index];
     else
         p->q[dt_index][1] = p->x[dt_index][1];
+}
+
+
+static int LIQSS_write(LIQSS2_quantizerState quantizer, DATA* data, int type, modelica_real t, const uinteger STATES, int dt_index){
+    switch(type){
+        case 1:
+        {
+            uinteger i = 0;
+            char buf[100];
+        	for(i=0;i<STATES;i++){
+        		sprintf(buf, "%s.txt", "/home/anton/Desktop/Results/StateVars");
+        		FILE *fs;
+        		if(i==0)
+        			fs = fopen(buf, "w");
+        		else
+        			fs = fopen(buf, "a");
+        		if(fs == NULL){
+        			printf("Couldn't open file\n");
+        			return 1;
+        		}
+        		fprintf(fs,"%s\n", data->modelData->realVarsData[i].info.name);
+        		fclose(fs);
+        	}
+            return 0;
+        }
+        break;
+        case 2:
+        {
+            uinteger i = 0;
+            char buf[100];
+            for(i=0;i<STATES;i++){
+        		sprintf(buf, "%s%s.csv", "/home/anton/Desktop/Results/", data->modelData->realVarsData[i].info.name);
+        		FILE *fs = fopen(buf, "w");
+        		if(fs == NULL){
+        			printf("Couldn't open file\n");
+        			return 1;
+        		}
+        		fprintf(fs,"time,q,dq,ddq,x,dx,ddx\n");
+        		fclose(fs);
+        	}
+            return 0;
+        }
+        break;
+        case 3:
+        {
+            char buf[100];
+            sprintf(buf, "%s%s.csv", "/home/anton/Desktop/Results/", data->modelData->realVarsData[dt_index].info.name);
+			FILE *fs = fopen(buf, "a");
+			if(fs == NULL){
+				printf("Couldn't open file\n");
+				return 1;
+			}
+			fprintf(fs,"%.12f,%.12f,%.12f,%.12f,%.12f,%.12f,%.12f\n",t,quantizer->q[dt_index][0],quantizer->q[dt_index][1],quantizer->q[dt_index][2],quantizer->x[dt_index][0],quantizer->x[dt_index][1],quantizer->x[dt_index][2]);
+			fclose(fs);
+            return 0;
+        }
+        break;
+        default:
+            printf("Invalid type.\n");
+            return 1;
+    }
 }
