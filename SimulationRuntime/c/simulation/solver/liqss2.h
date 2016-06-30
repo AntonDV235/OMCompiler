@@ -1,4 +1,6 @@
-static modelica_real ddx(modelica_real** x, const uinteger index, modelica_real* state);
+static modelica_real ddx(modelica_real t, modelica_real** x, const uinteger index, modelica_real* state);
+
+static modelica_real dx(modelica_real t, modelica_real** x, const uinteger index, modelica_real* state);
 
 static int prefixedName_LIQSS2Simulation(DATA* data, threadData_t *threadData, SOLVER_INFO* solverInfo);
 
@@ -7,6 +9,7 @@ typedef struct LIQSS2_quantizerState_ *LIQSS2_quantizerState;
 struct LIQSS2_quantizerState_
 {
   int order;
+  int events; //!<
   modelica_real** x; //!<
   modelica_real** diffxq; //!<
   modelica_real** q; //!<
@@ -30,4 +33,8 @@ struct LIQSS2_quantizerState_
   modelica_real* ltq;
   modelica_real* nTime;
   modelica_integer* nSD;
+  modelica_integer* nZS;
+  modelica_real** ZS;
+  modelica_real* nextEventTime;
+  modelica_real* zcSign;
 };
