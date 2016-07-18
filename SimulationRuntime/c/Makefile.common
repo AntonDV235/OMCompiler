@@ -64,6 +64,9 @@ RUNTIMESIMSOLVER_HEADERS = ./simulation/solver/delay.h \
 ./simulation/solver/stateset.h \
 ./simulation/solver/perform_simulation.c \
 ./simulation/solver/liqss.c \
+./simulation/solver/liqss2Operations.h \
+./simulation/solver/liqss2Operations.c \
+./simulation/solver/liqss2.h \
 ./simulation/solver/liqss2.c \
 ./simulation/solver/qss.c \
 ./simulation/solver/perform_qss_simulation.c \

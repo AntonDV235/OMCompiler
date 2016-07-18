@@ -57,3 +57,13 @@ anton@qwerty:~/Distros/OpenModelica/.git/modules/OMC$ cat config
 	url = https://openmodelica.org/git-readonly/OMCompiler.git
 	fetch = +refs/heads/*:refs/remotes/upstream/*
 ```
+
+## Operational Stuffs
+
+1. You will also have to change the location of the wrtiting of the files which is found in the **LIQSS_write** function in the **liqss2Operations.c** file.
+
+2. Also, the second derivatives in the **ddx** function must be compiled for the model under consideration.
+
+3. The tolerances must be changed within the solver. The tolerances are named **tolerance** and **absTolerance**.
+
+To build the model navigate to */OpenModelica/OMCompiler* and run *make* in the terminal.
