@@ -1,6 +1,6 @@
-static modelica_real ddx(modelica_real t, modelica_real** x, const uinteger index, modelica_real* state);
+static modelica_real ddx(DATA* data,modelica_real t, modelica_real** x, const uinteger index, modelica_real* state);
 
-static modelica_real dx(modelica_real t, modelica_real** x, const uinteger index, modelica_real* state);
+static modelica_real dx(DATA* data, modelica_real t, modelica_real** x, const uinteger index, modelica_real* state);
 
 static int prefixedName_LIQSS2Simulation(DATA* data, threadData_t *threadData, SOLVER_INFO* solverInfo);
 
